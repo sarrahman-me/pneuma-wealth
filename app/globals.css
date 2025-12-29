@@ -13,6 +13,32 @@ body {
   color: #1c1b19;
 }
 
+.app-shell {
+  min-height: 100vh;
+}
+
+.nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e3ddd4;
+  background: #f2ece3;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav a {
+  color: #1c1b19;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
 main {
   max-width: 880px;
   margin: 0 auto;
