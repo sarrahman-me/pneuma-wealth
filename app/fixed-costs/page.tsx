@@ -10,6 +10,7 @@ type FixedCost = {
   is_active: boolean
   paid_date_local: string | null
   paid_ts_utc: number | null
+  paid_tx_id: number | null
 }
 
 const formatLocalDate = (date: Date) => {

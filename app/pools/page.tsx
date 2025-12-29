@@ -7,8 +7,15 @@ type PoolsSummary = {
   burn_pool_balance: number
   stabilizer_pool_balance: number
   recommended_spend_today: number
+  today_out: number
   today_remaining: number
+  today_remaining_clamped: number
   resilience_days_estimate: number
+  total_in: number
+  total_out: number
+  net_balance: number
+  stabilizer_guard: number
+  burn_budget: number
 }
 
 export default function PoolsPage() {
@@ -41,12 +48,29 @@ export default function PoolsPage() {
         {error && <p style={{ color: '#a4433f' }}>{error}</p>}
         {summary && (
           <div className="grid">
-            <div className="badge">Burn Pool: Rp {summary.burn_pool_balance}</div>
-            <div className="badge">Stabilizer Pool: Rp {summary.stabilizer_pool_balance}</div>
+            <div className="badge">Total In: Rp {summary.total_in}</div>
+            <div className="badge">Total Out: Rp {summary.total_out}</div>
+            <div className="badge">Net Balance: Rp {summary.net_balance}</div>
+            <div className="badge">
+              Stabilizer Guard: Rp {summary.stabilizer_guard}
+            </div>
+            <div className="badge">Burn Budget: Rp {summary.burn_budget}</div>
+            <div className="badge">
+              Burn Pool Target: Rp {summary.burn_pool_balance}
+            </div>
+            <div className="badge">
+              Stabilizer Pool Target: Rp {summary.stabilizer_pool_balance}
+            </div>
             <div className="badge">
               Recommended Spend Today: Rp {summary.recommended_spend_today}
             </div>
-            <div className="badge">Today Remaining: Rp {summary.today_remaining}</div>
+            <div className="badge">Today Out: Rp {summary.today_out}</div>
+            <div className="badge">
+              Today Remaining: Rp {summary.today_remaining_clamped}
+            </div>
+            {summary.today_remaining < 0 && (
+              <div className="badge">Overspent today</div>
+            )}
             <div className="badge">
               Resilience Days Estimate: {summary.resilience_days_estimate}
             </div>

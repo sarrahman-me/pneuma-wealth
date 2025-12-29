@@ -13,7 +13,10 @@ type Transaction = {
 
 type TodaySummary = {
   recommended_spend_today: number
+  today_out: number
   today_remaining: number
+  today_remaining_clamped: number
+  overspent_today: boolean
 }
 
 const formatLocalDate = (date: Date) => {
@@ -30,7 +33,10 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [summary, setSummary] = useState<TodaySummary>({
     recommended_spend_today: 0,
+    today_out: 0,
     today_remaining: 0,
+    today_remaining_clamped: 0,
+    overspent_today: false,
   })
 
   const todayString = useMemo(() => formatLocalDate(new Date()), [])
@@ -63,7 +69,7 @@ export default function Home() {
       date_local: dateLocal || todayString,
     })
     setInAmount('')
-    refreshTransactions()
+    await Promise.all([refreshTransactions(), refreshSummary()])
   }
 
   const handleAddExpense = async () => {
@@ -76,7 +82,7 @@ export default function Home() {
       date_local: dateLocal || todayString,
     })
     setOutAmount('')
-    refreshTransactions()
+    await Promise.all([refreshTransactions(), refreshSummary()])
   }
 
   return (
@@ -89,7 +95,12 @@ export default function Home() {
           <div className="badge">
             Recommended Spend Today: Rp {summary.recommended_spend_today}
           </div>
-          <div className="badge">Today Remaining: Rp {summary.today_remaining}</div>
+          <div className="badge">
+            Today Remaining: Rp {summary.today_remaining_clamped}
+          </div>
+          {summary.overspent_today && (
+            <div className="badge">Overspent today</div>
+          )}
         </div>
       </section>
 

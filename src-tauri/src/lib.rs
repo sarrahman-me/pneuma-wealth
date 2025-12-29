@@ -22,12 +22,16 @@ struct FixedCost {
     is_active: bool,
     paid_date_local: Option<String>,
     paid_ts_utc: Option<i64>,
+    paid_tx_id: Option<i64>,
 }
 
 #[derive(Serialize)]
 struct TodaySummary {
     recommended_spend_today: i64,
+    today_out: i64,
     today_remaining: i64,
+    today_remaining_clamped: i64,
+    overspent_today: bool,
 }
 
 #[derive(Serialize)]
@@ -51,11 +55,98 @@ struct PoolsSummary {
     burn_pool_balance: i64,
     stabilizer_pool_balance: i64,
     recommended_spend_today: i64,
+    today_out: i64,
     today_remaining: i64,
+    today_remaining_clamped: i64,
     resilience_days_estimate: i64,
+    total_in: i64,
+    total_out: i64,
+    net_balance: i64,
+    stabilizer_guard: i64,
+    burn_budget: i64,
 }
 fn resolve_date_local(date_local: Option<String>) -> String {
     date_local.unwrap_or_else(|| Local::now().format("%Y-%m-%d").to_string())
+}
+
+fn clamp_i64(value: i64, min: i64, max: i64) -> i64 {
+    if value < min {
+        min
+    } else if value > max {
+        max
+    } else {
+        value
+    }
+}
+
+fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
+    let config = fetch_config(conn)?;
+
+    let total_in: i64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'IN'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+    let total_out: i64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'OUT'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+
+    let net_balance = total_in - total_out;
+    let stabilizer_guard = config.min_floor * config.resilience_days;
+    let burn_budget = std::cmp::max(0, net_balance - stabilizer_guard);
+
+    let burn_pool_balance = burn_budget * config.burn_pool_ratio / 100;
+    let stabilizer_pool_balance = net_balance - burn_pool_balance;
+
+    let recommended_spend_today_raw = if burn_budget == 0 {
+        config.min_floor
+    } else {
+        burn_budget / config.resilience_days
+    };
+    let recommended_spend_today = clamp_i64(
+        recommended_spend_today_raw,
+        config.min_floor,
+        config.max_ceil,
+    );
+
+    let today_local = Local::now().format("%Y-%m-%d").to_string();
+    let today_out: i64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'OUT' AND date_local = ?1",
+            [today_local],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+
+    let today_remaining = recommended_spend_today - today_out;
+    let today_remaining_clamped = std::cmp::max(0, today_remaining);
+
+    let resilience_days_estimate = if config.min_floor > 0 {
+        stabilizer_pool_balance / config.min_floor
+    } else {
+        0
+    };
+
+    Ok(PoolsSummary {
+        burn_pool_balance,
+        stabilizer_pool_balance,
+        recommended_spend_today,
+        today_out,
+        today_remaining,
+        today_remaining_clamped,
+        resilience_days_estimate,
+        total_in,
+        total_out,
+        net_balance,
+        stabilizer_guard,
+        burn_budget,
+    })
 }
 
 fn fetch_config(conn: &Connection) -> Result<Config, String> {
@@ -76,7 +167,7 @@ fn fetch_config(conn: &Connection) -> Result<Config, String> {
 
 fn fetch_fixed_cost(conn: &Connection, fixed_cost_id: i64) -> Result<FixedCost, String> {
     conn.query_row(
-        "SELECT id, name, amount, is_active, paid_date_local, paid_ts_utc FROM fixed_costs WHERE id = ?1",
+        "SELECT id, name, amount, is_active, paid_date_local, paid_ts_utc, paid_tx_id FROM fixed_costs WHERE id = ?1",
         [fixed_cost_id],
         |row| {
             let active: i64 = row.get(3)?;
@@ -87,6 +178,7 @@ fn fetch_fixed_cost(conn: &Connection, fixed_cost_id: i64) -> Result<FixedCost, 
                 is_active: active != 0,
                 paid_date_local: row.get(4)?,
                 paid_ts_utc: row.get(5)?,
+                paid_tx_id: row.get(6)?,
             })
         },
     )
@@ -98,6 +190,9 @@ fn insert_transaction(
     amount: i64,
     date_local: Option<String>,
 ) -> Result<Transaction, String> {
+    if amount < 0 {
+        return Err("amount must be >= 0".to_string());
+    }
     let date_local = resolve_date_local(date_local);
     let ts_utc = Utc::now().timestamp_millis();
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
@@ -174,6 +269,9 @@ fn get_config(app: AppHandle) -> Result<Config, String> {
 
 #[tauri::command(rename_all = "snake_case")]
 fn update_config(app: AppHandle, payload: ConfigPayload) -> Result<Config, String> {
+    if payload.min_floor < 0 || payload.max_ceil < 0 {
+        return Err("min_floor and max_ceil must be >= 0".to_string());
+    }
     if payload.resilience_days < 1 {
         return Err("resilience_days must be >= 1".to_string());
     }
@@ -205,7 +303,7 @@ fn list_fixed_costs(app: AppHandle) -> Result<Vec<FixedCost>, String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, amount, is_active, paid_date_local, paid_ts_utc FROM fixed_costs ORDER BY id DESC",
+            "SELECT id, name, amount, is_active, paid_date_local, paid_ts_utc, paid_tx_id FROM fixed_costs ORDER BY id DESC",
         )
         .map_err(|err| err.to_string())?;
 
@@ -219,6 +317,7 @@ fn list_fixed_costs(app: AppHandle) -> Result<Vec<FixedCost>, String> {
                 is_active: active != 0,
                 paid_date_local: row.get(4)?,
                 paid_ts_utc: row.get(5)?,
+                paid_tx_id: row.get(6)?,
             })
         })
         .map_err(|err| err.to_string())?;
@@ -233,10 +332,13 @@ fn list_fixed_costs(app: AppHandle) -> Result<Vec<FixedCost>, String> {
 
 #[tauri::command(rename_all = "snake_case")]
 fn add_fixed_cost(app: AppHandle, name: String, amount: i64) -> Result<FixedCost, String> {
+    if amount < 0 {
+        return Err("amount must be >= 0".to_string());
+    }
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
 
     conn.execute(
-        "INSERT INTO fixed_costs (name, amount, is_active, paid_date_local, paid_ts_utc) VALUES (?1, ?2, 1, NULL, NULL)",
+        "INSERT INTO fixed_costs (name, amount, is_active, paid_date_local, paid_ts_utc, paid_tx_id) VALUES (?1, ?2, 1, NULL, NULL, NULL)",
         params![name, amount],
     )
     .map_err(|err| err.to_string())?;
@@ -249,6 +351,12 @@ fn add_fixed_cost(app: AppHandle, name: String, amount: i64) -> Result<FixedCost
 #[tauri::command(rename_all = "snake_case")]
 fn delete_fixed_cost(app: AppHandle, fixed_cost_id: i64) -> Result<(), String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    let fixed_cost = fetch_fixed_cost(&conn, fixed_cost_id)?;
+
+    if let Some(tx_id) = fixed_cost.paid_tx_id {
+        conn.execute("DELETE FROM transactions WHERE id = ?1", params![tx_id])
+            .map_err(|err| err.to_string())?;
+    }
     conn.execute(
         "DELETE FROM fixed_costs WHERE id = ?1",
         params![fixed_cost_id],
@@ -267,9 +375,46 @@ fn mark_fixed_cost_paid(
     let paid_ts_utc = Utc::now().timestamp_millis();
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
 
+    let mut fixed_cost = fetch_fixed_cost(&conn, fixed_cost_id)?;
+    if fixed_cost.amount < 0 {
+        return Err("amount must be >= 0".to_string());
+    }
+
+    if let Some(tx_id) = fixed_cost.paid_tx_id {
+        let tx_exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM transactions WHERE id = ?1",
+                [tx_id],
+                |row| row.get(0),
+            )
+            .map_err(|err| err.to_string())?;
+        if tx_exists > 0 {
+            conn.execute(
+                "UPDATE fixed_costs SET paid_date_local = ?1, paid_ts_utc = ?2 WHERE id = ?3",
+                params![paid_date_local, paid_ts_utc, fixed_cost_id],
+            )
+            .map_err(|err| err.to_string())?;
+            return fetch_fixed_cost(&conn, fixed_cost_id);
+        }
+
+        conn.execute(
+            "UPDATE fixed_costs SET paid_tx_id = NULL WHERE id = ?1",
+            params![fixed_cost_id],
+        )
+        .map_err(|err| err.to_string())?;
+        fixed_cost.paid_tx_id = None;
+    }
+
     conn.execute(
-        "UPDATE fixed_costs SET paid_date_local = ?1, paid_ts_utc = ?2 WHERE id = ?3",
-        params![paid_date_local, paid_ts_utc, fixed_cost_id],
+        "INSERT INTO transactions (ts_utc, date_local, kind, amount) VALUES (?1, ?2, 'OUT', ?3)",
+        params![paid_ts_utc, paid_date_local, fixed_cost.amount],
+    )
+    .map_err(|err| err.to_string())?;
+    let tx_id = conn.last_insert_rowid();
+
+    conn.execute(
+        "UPDATE fixed_costs SET paid_date_local = ?1, paid_ts_utc = ?2, paid_tx_id = ?3 WHERE id = ?4",
+        params![paid_date_local, paid_ts_utc, tx_id, fixed_cost_id],
     )
     .map_err(|err| err.to_string())?;
 
@@ -279,8 +424,14 @@ fn mark_fixed_cost_paid(
 #[tauri::command(rename_all = "snake_case")]
 fn mark_fixed_cost_unpaid(app: AppHandle, fixed_cost_id: i64) -> Result<FixedCost, String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    let fixed_cost = fetch_fixed_cost(&conn, fixed_cost_id)?;
+
+    if let Some(tx_id) = fixed_cost.paid_tx_id {
+        conn.execute("DELETE FROM transactions WHERE id = ?1", params![tx_id])
+            .map_err(|err| err.to_string())?;
+    }
     conn.execute(
-        "UPDATE fixed_costs SET paid_date_local = NULL, paid_ts_utc = NULL WHERE id = ?1",
+        "UPDATE fixed_costs SET paid_date_local = NULL, paid_ts_utc = NULL, paid_tx_id = NULL WHERE id = ?1",
         params![fixed_cost_id],
     )
     .map_err(|err| err.to_string())?;
@@ -289,79 +440,29 @@ fn mark_fixed_cost_unpaid(app: AppHandle, fixed_cost_id: i64) -> Result<FixedCos
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn get_today_summary() -> TodaySummary {
-    TodaySummary {
-        recommended_spend_today: 0,
-        today_remaining: 0,
-    }
+fn get_today_summary(app: AppHandle) -> Result<TodaySummary, String> {
+    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    let summary = compute_pools_summary(&conn)?;
+    Ok(TodaySummary {
+        recommended_spend_today: summary.recommended_spend_today,
+        today_out: summary.today_out,
+        today_remaining: summary.today_remaining,
+        today_remaining_clamped: summary.today_remaining_clamped,
+        overspent_today: summary.today_remaining < 0,
+    })
 }
 
 #[tauri::command(rename_all = "snake_case")]
 fn get_pools_summary(app: AppHandle) -> Result<PoolsSummary, String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
-    let config = fetch_config(&conn)?;
-
-    let total_in: i64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'IN'",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|err| err.to_string())?;
-    let total_out: i64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'OUT'",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|err| err.to_string())?;
-
-    let today_local = Local::now().format("%Y-%m-%d").to_string();
-    let today_out: i64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE kind = 'OUT' AND date_local = ?1",
-            [today_local],
-            |row| row.get(0),
-        )
-        .map_err(|err| err.to_string())?;
-
-    let days_with_out: i64 = conn
-        .query_row(
-            "SELECT COUNT(DISTINCT date_local) FROM transactions WHERE kind = 'OUT'",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|err| err.to_string())?;
-
-    let net_balance = total_in - total_out;
-    let burn_pool_balance = net_balance * config.burn_pool_ratio / 100;
-    let stabilizer_pool_balance = net_balance - burn_pool_balance;
-
-    let avg_daily_out = if days_with_out > 0 {
-        total_out / days_with_out
-    } else {
-        0
-    };
-    let resilience_days_estimate = if avg_daily_out > 0 {
-        stabilizer_pool_balance / avg_daily_out
-    } else {
-        0
-    };
-
-    Ok(PoolsSummary {
-        burn_pool_balance,
-        stabilizer_pool_balance,
-        recommended_spend_today: config.max_ceil,
-        today_remaining: config.max_ceil - today_out,
-        resilience_days_estimate,
-    })
+    compute_pools_summary(&conn)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            db::init_db(&app.handle())?;
+            db::init_db(app.handle())?;
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())

@@ -42,7 +42,8 @@ pub fn init_db(app: &AppHandle) -> AnyResult<()> {
           amount INTEGER NOT NULL,
           is_active INTEGER NOT NULL DEFAULT 1,
           paid_date_local TEXT,
-          paid_ts_utc INTEGER
+          paid_ts_utc INTEGER,
+          paid_tx_id INTEGER
         );
         CREATE TABLE IF NOT EXISTS fixed_cost_payments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +80,9 @@ fn ensure_fixed_cost_columns(conn: &Connection) -> AnyResult<()> {
     }
     if !table_has_column(conn, "fixed_costs", "paid_ts_utc")? {
         conn.execute("ALTER TABLE fixed_costs ADD COLUMN paid_ts_utc INTEGER", [])?;
+    }
+    if !table_has_column(conn, "fixed_costs", "paid_tx_id")? {
+        conn.execute("ALTER TABLE fixed_costs ADD COLUMN paid_tx_id INTEGER", [])?;
     }
     Ok(())
 }
