@@ -266,8 +266,14 @@ fn delete_transaction(app: AppHandle, transaction_id: i64) -> Result<(), String>
     if transaction_id <= 0 {
         return Err("ID transaksi tidak valid".to_string());
     }
-    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
-    let affected = conn
+    let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+    tx.execute(
+        "UPDATE fixed_costs SET paid_date_local = NULL, paid_ts_utc = NULL, paid_tx_id = NULL WHERE paid_tx_id = ?1",
+        params![transaction_id],
+    )
+    .map_err(|err| err.to_string())?;
+    let affected = tx
         .execute(
             "DELETE FROM transactions WHERE id = ?1",
             params![transaction_id],
@@ -276,6 +282,7 @@ fn delete_transaction(app: AppHandle, transaction_id: i64) -> Result<(), String>
     if affected == 0 {
         return Err("Transaksi tidak ditemukan".to_string());
     }
+    tx.commit().map_err(|err| err.to_string())?;
     Ok(())
 }
 
