@@ -11,6 +11,8 @@ type Transaction = {
   date_local: string;
   kind: "IN" | "OUT";
   amount: number;
+  source: "manual" | "fixed_cost";
+  fixed_cost_id: number | null;
 };
 
 type TodaySummary = {
@@ -116,7 +118,10 @@ export default function Home() {
   return (
     <main>
       <h1>PNEUMA</h1>
-      <p>Pelacak keuangan lokal dengan kontrol BURN_POOL + STABILIZER_POOL.</p>
+      <p>
+        Pelacak keuangan lokal untuk mencatat transaksi dan ringkasan dana
+        harian.
+      </p>
 
       <section>
         <div className="grid">

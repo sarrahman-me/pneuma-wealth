@@ -19,7 +19,7 @@ export default function RootLayout({
             <Link href="/">Beranda</Link>
             <Link href="/rules">Aturan</Link>
             <Link href="/fixed-costs">Biaya Tetap</Link>
-            <Link href="/pools">Pos</Link>
+            <Link href="/pools">Ringkasan Dana</Link>
           </nav>
           {children}
         </div>

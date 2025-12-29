@@ -7,14 +7,12 @@ type Config = {
   min_floor: number
   max_ceil: number
   resilience_days: number
-  burn_pool_ratio: number
 }
 
 const DEFAULT_CONFIG: Config = {
   min_floor: 0,
   max_ceil: 100000,
   resilience_days: 30,
-  burn_pool_ratio: 50,
 }
 
 export default function RulesPage() {
@@ -52,11 +50,7 @@ export default function RulesPage() {
       return
     }
     if (config.resilience_days < 1) {
-      setError('Hari ketahanan minimal 1')
-      return
-    }
-    if (config.burn_pool_ratio < 0 || config.burn_pool_ratio > 100) {
-      setError('Rasio burn pool harus antara 0 dan 100')
+      setError('Target hari penyangga minimal 1')
       return
     }
 
@@ -72,7 +66,7 @@ export default function RulesPage() {
   return (
     <main>
       <h1>Aturan / Konfigurasi</h1>
-      <p>Parameter inti untuk pool dan rekomendasi.</p>
+      <p>Parameter inti untuk ringkasan dana dan rekomendasi.</p>
 
       <section>
         <div className="grid">
@@ -95,21 +89,12 @@ export default function RulesPage() {
             />
           </div>
           <div>
-            <label htmlFor="resilience-days">Hari Ketahanan</label>
+            <label htmlFor="resilience-days">Target Hari Dana Penyangga</label>
             <input
               id="resilience-days"
               type="number"
               value={config.resilience_days}
               onChange={(event) => updateField('resilience_days', event.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="burn-ratio">Rasio Burn Pool (%)</label>
-            <input
-              id="burn-ratio"
-              type="number"
-              value={config.burn_pool_ratio}
-              onChange={(event) => updateField('burn_pool_ratio', event.target.value)}
             />
           </div>
         </div>

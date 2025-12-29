@@ -21,6 +21,8 @@ const formatLocalDate = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const formatPeriodYm = (dateString: string) => dateString.slice(0, 7)
+
 export default function FixedCostsPage() {
   const [items, setItems] = useState<FixedCost[]>([])
   const [name, setName] = useState('')
@@ -29,6 +31,7 @@ export default function FixedCostsPage() {
   const [error, setError] = useState('')
 
   const todayString = useMemo(() => formatLocalDate(new Date()), [])
+  const currentPeriod = useMemo(() => formatPeriodYm(todayString), [todayString])
 
   const refresh = async () => {
     const data = await invoke<FixedCost[]>('list_fixed_costs')
@@ -63,7 +66,10 @@ export default function FixedCostsPage() {
 
   const handleTogglePaid = async (item: FixedCost) => {
     if (item.paid_date_local) {
-      await invoke('mark_fixed_cost_unpaid', { fixed_cost_id: item.id })
+      await invoke('mark_fixed_cost_unpaid', {
+        fixed_cost_id: item.id,
+        paid_date_local: item.paid_date_local,
+      })
     } else {
       await invoke('mark_fixed_cost_paid', {
         fixed_cost_id: item.id,
@@ -81,7 +87,7 @@ export default function FixedCostsPage() {
   return (
     <main>
       <h1>Biaya Tetap</h1>
-      <p>Toggle manual untuk biaya berulang.</p>
+      <p>Kelola biaya bulanan dan status lunas per periode.</p>
 
       <section>
         <div className="grid">
@@ -138,7 +144,7 @@ export default function FixedCostsPage() {
                 <span className="badge">
                   {item.paid_date_local
                     ? `Lunas ${item.paid_date_local}`
-                    : 'Belum Lunas'}
+                    : `Belum Lunas (${currentPeriod})`}
                 </span>
                 <button className="secondary" onClick={() => handleTogglePaid(item)}>
                   {item.paid_date_local ? 'Batalkan Lunas' : 'Tandai Lunas'}

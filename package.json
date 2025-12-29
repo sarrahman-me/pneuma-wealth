@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -18,6 +21,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "eslint": "^9.26.0",
+    "eslint-config-next": "^15.5.9",
     "@types/node": "^22.10.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
