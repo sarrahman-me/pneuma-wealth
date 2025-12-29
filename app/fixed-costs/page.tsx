@@ -29,6 +29,7 @@ export default function FixedCostsPage() {
   const [amount, setAmount] = useState('')
   const [paidDate, setPaidDate] = useState('')
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all')
 
   const todayString = useMemo(() => formatLocalDate(new Date()), [])
   const currentPeriod = useMemo(() => formatPeriodYm(todayString), [todayString])
@@ -84,72 +85,145 @@ export default function FixedCostsPage() {
     refresh()
   }
 
+  const filteredItems = items.filter((item) => {
+    if (filter === 'paid') {
+      return Boolean(item.paid_date_local)
+    }
+    if (filter === 'unpaid') {
+      return !item.paid_date_local
+    }
+    return true
+  })
+
+  const totalPeriod = items.reduce((sum, item) => sum + item.amount, 0)
+  const totalPaid = items.reduce(
+    (sum, item) => (item.paid_date_local ? sum + item.amount : sum),
+    0
+  )
+  const totalUnpaid = totalPeriod - totalPaid
+
   return (
     <main>
       <h1>Biaya Tetap</h1>
       <p>Kelola biaya bulanan dan status lunas per periode.</p>
 
-      <section>
-        <div className="grid">
-          <div>
-            <label htmlFor="fixed-name">Nama</label>
-            <input
-              id="fixed-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Sewa"
-            />
+      <section className="fixed-form">
+        <div className="metric-card">
+          <div className="metric-title">Tambah Biaya Tetap</div>
+          <div className="form-grid">
+            <div>
+              <label htmlFor="fixed-name">Nama</label>
+              <input
+                id="fixed-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Sewa"
+              />
+            </div>
+            <div>
+              <label htmlFor="fixed-amount">Jumlah (Rp)</label>
+              <input
+                id="fixed-amount"
+                type="number"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="1500000"
+              />
+            </div>
+            <div>
+              <label htmlFor="paid-date">Tanggal Bayar Default (opsional)</label>
+              <input
+                id="paid-date"
+                type="date"
+                value={paidDate}
+                onChange={(event) => setPaidDate(event.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label htmlFor="fixed-amount">Jumlah (Rp)</label>
-            <input
-              id="fixed-amount"
-              type="number"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="1500000"
-            />
+          <div className="row" style={{ marginTop: 16 }}>
+            <button onClick={handleAdd}>Tambah</button>
           </div>
-          <div>
-            <label htmlFor="paid-date">Tanggal Bayar (opsional)</label>
-            <input
-              id="paid-date"
-              type="date"
-              value={paidDate}
-              onChange={(event) => setPaidDate(event.target.value)}
-            />
-          </div>
+          {error && <div className="alert-error">{error}</div>}
         </div>
-        <div className="row" style={{ marginTop: 16 }}>
-          <button onClick={handleAdd}>Tambah Biaya Tetap</button>
-        </div>
-        {error && <p style={{ color: '#a4433f' }}>{error}</p>}
       </section>
 
       <section>
-        <h2 style={{ marginTop: 0 }}>Daftar</h2>
-        <div className="list">
-          {items.length === 0 && (
-            <div className="list-item">Belum ada biaya tetap.</div>
+        <div className="fixed-header">
+          <h2>Daftar</h2>
+          <div className="segmented">
+            <button
+              type="button"
+              className={filter === 'all' ? 'active' : ''}
+              onClick={() => setFilter('all')}
+            >
+              Semua
+            </button>
+            <button
+              type="button"
+              className={filter === 'unpaid' ? 'active' : ''}
+              onClick={() => setFilter('unpaid')}
+            >
+              Belum Lunas
+            </button>
+            <button
+              type="button"
+              className={filter === 'paid' ? 'active' : ''}
+              onClick={() => setFilter('paid')}
+            >
+              Lunas
+            </button>
+          </div>
+        </div>
+
+        <div className="hero-grid fixed-summary">
+          <div className="hero-card">
+            <div className="hero-label">Total Periode</div>
+            <div className="hero-value">{formatRupiah(totalPeriod)}</div>
+          </div>
+          <div className="hero-card">
+            <div className="hero-label">Sudah Lunas</div>
+            <div className="hero-value">{formatRupiah(totalPaid)}</div>
+          </div>
+          <div className="hero-card">
+            <div className="hero-label">Sisa Belum Lunas</div>
+            <div className="hero-value">{formatRupiah(totalUnpaid)}</div>
+          </div>
+        </div>
+
+        <div className="fixed-list">
+          {filteredItems.length === 0 && (
+            <div className="tx-empty">Belum ada biaya tetap.</div>
           )}
-          {items.map((item) => (
-            <div className="list-item" key={item.id}>
-              <div>
-                <strong>{item.name}</strong>
-                <div style={{ color: '#706a63' }}>
-                  {formatRupiah(item.amount)}
+          {filteredItems.map((item) => (
+            <div className="fixed-row" key={item.id}>
+              <div className="tx-main">
+                <div className="tx-title">
+                  <span className="tx-amount">{item.name}</span>
+                </div>
+                <div className="tx-meta">
+                  <span>{formatRupiah(item.amount)}</span>
+                  <span
+                    className={`pill ${
+                      item.paid_date_local ? 'pill-in' : 'pill-muted'
+                    }`}
+                  >
+                    {item.paid_date_local
+                      ? `Lunas ${item.paid_date_local}`
+                      : `Belum Lunas (${currentPeriod})`}
+                  </span>
                 </div>
               </div>
-              <div className="row">
-                <span className="badge">
-                  {item.paid_date_local
-                    ? `Lunas ${item.paid_date_local}`
-                    : `Belum Lunas (${currentPeriod})`}
-                </span>
-                <button className="secondary" onClick={() => handleTogglePaid(item)}>
+              <div className="fixed-actions">
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={() => handleTogglePaid(item)}
+                >
                   {item.paid_date_local ? 'Batalkan Lunas' : 'Tandai Lunas'}
                 </button>
-                <button onClick={() => handleDelete(item)}>Hapus</button>
+                <button type="button" onClick={() => handleDelete(item)}>
+                  Hapus
+                </button>
               </div>
             </div>
           ))}

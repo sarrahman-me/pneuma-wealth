@@ -17,6 +17,7 @@ export default function RootLayout({
         <div className="app-shell">
           <nav className="nav">
             <Link href="/">Beranda</Link>
+            <Link href="/history">Riwayat</Link>
             <Link href="/rules">Aturan</Link>
             <Link href="/fixed-costs">Biaya Tetap</Link>
             <Link href="/pools">Ringkasan Dana</Link>
