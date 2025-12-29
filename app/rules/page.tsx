@@ -66,7 +66,11 @@ export default function RulesPage() {
   return (
     <main>
       <h1>Aturan / Konfigurasi</h1>
-      <p>Parameter inti untuk ringkasan dana dan rekomendasi.</p>
+      <p>
+        Parameter inti untuk ringkasan dana dan rekomendasi. Target hari
+        penyangga juga dipakai sebagai horizon pembagian Dana Fleksibel per
+        hari.
+      </p>
 
       <section>
         <div className="grid">

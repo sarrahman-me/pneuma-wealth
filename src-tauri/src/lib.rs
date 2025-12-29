@@ -104,6 +104,7 @@ fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
         .map_err(|err| err.to_string())?;
 
     let net_balance = total_in - total_out;
+    // resilience_days berperan ganda: target penyangga dan horizon pembagian dana fleksibel.
     let target_penyangga = config.min_floor * config.resilience_days;
     let dana_fleksibel = std::cmp::max(0, net_balance - target_penyangga);
 
@@ -140,7 +141,7 @@ fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
     let overspent_today = today_out > recommended_spend_today;
 
     let hari_ketahanan_stop_pemasukan = if config.min_floor > 0 {
-        net_balance.div_euclid(config.min_floor)
+        std::cmp::max(0, net_balance.div_euclid(config.min_floor))
     } else {
         0
     };
