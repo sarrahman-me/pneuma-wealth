@@ -21,6 +21,29 @@ type PoolsSummary = {
   hari_ketahanan_stop_pemasukan: number;
 };
 
+type MetricCardProps = {
+  title: string;
+  value: string;
+  description?: string;
+  warning?: boolean;
+  children?: React.ReactNode;
+};
+
+const MetricCard = ({
+  title,
+  value,
+  description,
+  warning,
+  children,
+}: MetricCardProps) => (
+  <div className={`metric-card${warning ? " metric-warn" : ""}`}>
+    <div className="metric-title">{title}</div>
+    <div className="metric-value">{value}</div>
+    {description && <div className="metric-desc">{description}</div>}
+    {children}
+  </div>
+);
+
 export default function PoolsPage() {
   const [summary, setSummary] = useState<PoolsSummary | null>(null);
   const [error, setError] = useState("");
@@ -48,113 +71,110 @@ export default function PoolsPage() {
       </p>
 
       <section>
-        <div className="row" style={{ marginBottom: 16 }}>
+        <div className="pools-toolbar">
           <button onClick={refresh}>Muat Ulang</button>
+          {error && <span className="metric-error">{error}</span>}
         </div>
-        <div className="list" style={{ marginBottom: 16 }}>
-          <div className="list-item">
-            <strong>Cara Membaca Halaman Ini</strong>
+        <details className="metric-helper">
+          <summary>Panduan singkat</summary>
+          <div className="metric-helper-body">
+            <p>
+              Cocokkan Saldo Bersih dengan saldo rekening; jika beda berarti ada
+              transaksi yang belum dicatat.
+            </p>
+            <p>
+              Target Dana Penyangga adalah batas aman yang ingin dijaga agar
+              tetap kuat.
+            </p>
+            <p>
+              Dana Fleksibel = saldo di atas Target Dana Penyangga. Ini bukan
+              saldo total. Jika Dana Fleksibel = 0 artinya saldo kamu tepat di
+              target penyangga. Saat penyangga sudah aman, rekomendasi harian
+              tetap minimal mengikuti Patokan Pengeluaran Harian (min_floor),
+              sehingga belanja tetap mungkin walau Dana Fleksibel 0.
+            </p>
+            <p>
+              Jika muncul “Melebihi Anggaran Hari Ini”, berarti hari ini sudah
+              lewat batas rekomendasi (tetap boleh dicatat).
+            </p>
           </div>
-          <div className="list-item">
-            Cocokkan Saldo Bersih dengan saldo rekening; jika beda berarti ada
-            transaksi yang belum dicatat.
-          </div>
-          <div className="list-item">
-            Target Dana Penyangga adalah batas aman yang ingin dijaga agar tetap
-            kuat.
-          </div>
-          <div className="list-item">
-            Dana Fleksibel adalah saldo di atas target penyangga. Saat penyangga
-            sudah aman, rekomendasi harian minimal mengikuti patokan harian
-            meski Dana Fleksibel terlihat 0.
-          </div>
-          <div className="list-item">
-            Jika muncul “Melebihi Anggaran Hari Ini”, berarti hari ini sudah
-            lewat batas rekomendasi (tetap boleh dicatat).
-          </div>
-        </div>
-        {error && <p style={{ color: "#a4433f" }}>{error}</p>}
+        </details>
         {summary && (
-          <div className="grid">
-            <div className="badge">
-              <div>Total Pemasukan</div>
-              <div>{formatRupiah(summary.total_in)}</div>
-              <div>Jumlah semua uang masuk yang kamu catat.</div>
-            </div>
-            <div className="badge">
-              <div>Total Pengeluaran</div>
-              <div>{formatRupiah(summary.total_out)}</div>
-              <div>
-                Jumlah semua uang keluar yang kamu catat (termasuk biaya tetap
-                yang ditandai lunas).
-              </div>
-            </div>
-            <div className="badge">
-              <div>Saldo Bersih</div>
-              <div>{formatRupiah(summary.net_balance)}</div>
-              <div>Total pemasukan dikurangi total pengeluaran.</div>
-            </div>
-            <div className="badge">
-              <div>Patokan Pengeluaran Harian</div>
-              <div>{formatRupiah(summary.min_floor)}</div>
-              <div>Target pengeluaran harian minimum yang ingin dijaga.</div>
-            </div>
-            <div className="badge">
-              <div>Batas Maks Belanja Harian</div>
-              <div>{formatRupiah(summary.max_ceil)}</div>
-              <div>
-                Batas atas rekomendasi belanja harian agar tidak berlebihan.
-              </div>
-            </div>
-            <div className="badge">
-              <div>Target Dana Penyangga</div>
-              <div>{formatRupiah(summary.target_penyangga)}</div>
-              <div>
-                Target saldo aman: patokan harian × target hari penyangga.
-              </div>
-            </div>
-            <div className="badge">
-              <div>Dana Fleksibel</div>
-              <div>{formatRupiah(summary.dana_fleksibel)}</div>
-              <div>
-                Saldo di atas target penyangga. Jika penyangga sudah aman,
-                rekomendasi harian minimal mengikuti patokan harian meski Dana
-                Fleksibel = 0.
-              </div>
-            </div>
-            <div className="badge">
-              <div>Rekomendasi Belanja Hari Ini</div>
-              <div>{formatRupiah(summary.recommended_spend_today)}</div>
-              <div>
-                Rekomendasi belanja harian dari dana fleksibel, dibagi menurut
-                target hari penyangga, dan dibatasi maksimum.
-              </div>
-            </div>
-            <div className="badge">
-              <div>Pengeluaran Hari Ini</div>
-              <div>{formatRupiah(summary.today_out)}</div>
-              <div>Total pengeluaran pada tanggal hari ini.</div>
-            </div>
-            <div className="badge">
-              <div>Sisa Anggaran Hari Ini</div>
-              <div>{formatRupiah(summary.today_remaining_clamped)}</div>
-              <div>
-                Rekomendasi belanja hari ini dikurangi pengeluaran hari ini.
-              </div>
-            </div>
+          <div className="metric-grid">
+            <MetricCard
+              title="Total Pemasukan"
+              value={formatRupiah(summary.total_in)}
+              description="Jumlah semua uang masuk yang kamu catat."
+            />
+            <MetricCard
+              title="Total Pengeluaran"
+              value={formatRupiah(summary.total_out)}
+              description="Jumlah semua uang keluar yang kamu catat (termasuk biaya tetap yang ditandai lunas)."
+            />
+            <MetricCard
+              title="Saldo Bersih"
+              value={formatRupiah(summary.net_balance)}
+              description="Total pemasukan dikurangi total pengeluaran."
+            />
+            <MetricCard
+              title="Patokan Pengeluaran Harian"
+              value={formatRupiah(summary.min_floor)}
+              description="Target pengeluaran harian minimum yang ingin dijaga."
+            />
+            <MetricCard
+              title="Batas Maks Belanja Harian"
+              value={formatRupiah(summary.max_ceil)}
+              description="Batas atas rekomendasi belanja harian agar tidak berlebihan."
+            />
+            <MetricCard
+              title="Target Dana Penyangga"
+              value={formatRupiah(summary.target_penyangga)}
+              description="Target saldo aman: patokan harian × target hari penyangga."
+            />
+            <MetricCard
+              title="Dana Fleksibel"
+              value={formatRupiah(summary.dana_fleksibel)}
+            >
+              <details className="metric-details">
+                <summary className="metric-desc">
+                  Dana Fleksibel = saldo di atas Target Dana Penyangga. Ini bukan saldo total.
+                </summary>
+                <div className="metric-desc">
+                  Jika Dana Fleksibel = 0 artinya saldo kamu tepat di target penyangga. Saat
+                  penyangga sudah aman, rekomendasi harian tetap minimal mengikuti Patokan
+                  Pengeluaran Harian (min_floor), sehingga belanja tetap mungkin walau Dana
+                  Fleksibel 0.
+                </div>
+              </details>
+            </MetricCard>
+            <MetricCard
+              title="Rekomendasi Belanja Hari Ini"
+              value={formatRupiah(summary.recommended_spend_today)}
+              description="Rekomendasi belanja harian dari dana fleksibel, dibagi menurut target hari penyangga, dan dibatasi maksimum."
+            />
+            <MetricCard
+              title="Pengeluaran Hari Ini"
+              value={formatRupiah(summary.today_out)}
+              description="Total pengeluaran pada tanggal hari ini."
+            />
+            <MetricCard
+              title="Sisa Anggaran Hari Ini"
+              value={formatRupiah(summary.today_remaining_clamped)}
+              description="Rekomendasi belanja hari ini dikurangi pengeluaran hari ini."
+            />
             {summary.overspent_today && (
-              <div className="badge">
-                <div>Melebihi Anggaran Hari Ini</div>
-                <div>Pengeluaran hari ini sudah melewati rekomendasi.</div>
-              </div>
+              <MetricCard
+                title="Melebihi Anggaran Hari Ini"
+                value="Perlu perhatian"
+                description="Pengeluaran hari ini sudah melewati rekomendasi."
+                warning
+              />
             )}
-            <div className="badge">
-              <div>Hari Ketahanan jika Stop Pemasukan</div>
-              <div>{summary.hari_ketahanan_stop_pemasukan}</div>
-              <div>
-                Perkiraan berapa hari saldo cukup jika tidak ada pemasukan baru.
-              </div>
-            </div>
+            <MetricCard
+              title="Hari Ketahanan jika Stop Pemasukan"
+              value={String(summary.hari_ketahanan_stop_pemasukan)}
+              description="Perkiraan berapa hari saldo cukup jika tidak ada pemasukan baru."
+            />
           </div>
         )}
       </section>

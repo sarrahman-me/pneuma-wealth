@@ -696,4 +696,13 @@ mod tests {
         let summary = compute_pools_summary(&conn).expect("summary");
         assert_eq!(summary.recommended_spend_today, 0);
     }
+
+    #[test]
+    fn hari_ketahanan_stop_pemasukan_never_negative() {
+        let conn = setup_conn(100, 500, 10);
+        insert_tx(&conn, "OUT", 500);
+
+        let summary = compute_pools_summary(&conn).expect("summary");
+        assert_eq!(summary.hari_ketahanan_stop_pemasukan, 0);
+    }
 }

@@ -68,8 +68,8 @@ export default function RulesPage() {
       <h1>Aturan / Konfigurasi</h1>
       <p>
         Parameter inti untuk ringkasan dana dan rekomendasi. Target hari
-        penyangga juga dipakai sebagai horizon pembagian Dana Fleksibel per
-        hari.
+        penyangga menentukan target dana penyangga (min_floor × hari) sekaligus
+        menjadi horizon pembagian Dana Fleksibel untuk rekomendasi harian.
       </p>
 
       <section>

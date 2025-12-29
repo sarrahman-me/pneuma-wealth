@@ -100,6 +100,139 @@ button.secondary {
   gap: 12px;
 }
 
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e6ddcf;
+  background: #fbfaf8;
+  box-shadow: 0 12px 24px rgba(28, 27, 25, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #6d655d;
+}
+
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1c1b19;
+}
+
+.metric-desc {
+  font-size: 13px;
+  color: #6d655d;
+  line-height: 1.4;
+}
+
+.metric-details {
+  margin-top: 6px;
+}
+
+.metric-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.metric-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.metric-details summary::after {
+  content: "Detail";
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a8076;
+  margin-left: 8px;
+}
+
+.metric-details[open] summary::after {
+  content: "Tutup";
+}
+
+.metric-helper {
+  border: 1px solid #e6ddcf;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fbfaf8;
+  margin-bottom: 16px;
+}
+
+.metric-helper summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6d655d;
+  list-style: none;
+}
+
+.metric-helper summary::-webkit-details-marker {
+  display: none;
+}
+
+.metric-helper summary::after {
+  content: "Buka";
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8076;
+  margin-left: 8px;
+}
+
+.metric-helper[open] summary::after {
+  content: "Tutup";
+}
+
+.metric-helper-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  color: #6d655d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.metric-helper-body p {
+  margin: 0;
+}
+
+.metric-warn {
+  border-color: #d8b6a8;
+  background: #f6eee8;
+}
+
+.metric-error {
+  color: #a4433f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pools-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 .row {
   display: flex;
   gap: 12px;
