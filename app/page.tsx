@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { formatRupiah } from './lib/format'
 
 type Transaction = {
   id: number
@@ -88,18 +89,21 @@ export default function Home() {
   return (
     <main>
       <h1>PNEUMA</h1>
-      <p>Local finance tracker with BURN_POOL + STABILIZER_POOL controls.</p>
+      <p>
+        Pelacak keuangan lokal dengan kontrol BURN_POOL + STABILIZER_POOL.
+      </p>
 
       <section>
         <div className="grid">
           <div className="badge">
-            Recommended Spend Today: Rp {summary.recommended_spend_today}
+            Rekomendasi Belanja Hari Ini:{' '}
+            {formatRupiah(summary.recommended_spend_today)}
           </div>
           <div className="badge">
-            Today Remaining: Rp {summary.today_remaining_clamped}
+            Sisa Hari Ini: {formatRupiah(summary.today_remaining_clamped)}
           </div>
           {summary.overspent_today && (
-            <div className="badge">Overspent today</div>
+            <div className="badge">Melebihi Anggaran Hari Ini</div>
           )}
         </div>
       </section>
@@ -107,7 +111,7 @@ export default function Home() {
       <section>
         <div className="grid">
           <div>
-            <label htmlFor="in-amount">IN (Rupiah)</label>
+            <label htmlFor="in-amount">Pemasukan (Rp)</label>
             <input
               id="in-amount"
               type="number"
@@ -117,7 +121,7 @@ export default function Home() {
             />
           </div>
           <div>
-            <label htmlFor="out-amount">OUT (Rupiah)</label>
+            <label htmlFor="out-amount">Pengeluaran (Rp)</label>
             <input
               id="out-amount"
               type="number"
@@ -127,7 +131,7 @@ export default function Home() {
             />
           </div>
           <div>
-            <label htmlFor="date-local">Date (optional)</label>
+            <label htmlFor="date-local">Tanggal (opsional)</label>
             <input
               id="date-local"
               type="date"
@@ -138,23 +142,24 @@ export default function Home() {
         </div>
 
         <div className="row" style={{ marginTop: 16 }}>
-          <button onClick={handleAddIncome}>Add IN</button>
+          <button onClick={handleAddIncome}>Tambah Pemasukan</button>
           <button className="secondary" onClick={handleAddExpense}>
-            Add OUT
+            Tambah Pengeluaran
           </button>
         </div>
       </section>
 
       <section>
-        <h2 style={{ marginTop: 0 }}>Recent Transactions</h2>
+        <h2 style={{ marginTop: 0 }}>Transaksi Terbaru</h2>
         <div className="list">
           {transactions.length === 0 && (
-            <div className="list-item">No transactions yet.</div>
+            <div className="list-item">Belum ada transaksi.</div>
           )}
           {transactions.map((tx) => (
             <div className="list-item" key={tx.id}>
               <strong>
-                {tx.kind} Rp {tx.amount}
+                {tx.kind === 'IN' ? 'Masuk' : 'Keluar'}{' '}
+                {formatRupiah(tx.amount)}
               </strong>
               <span>{tx.date_local}</span>
             </div>

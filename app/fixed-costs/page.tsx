@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { formatRupiah } from '../lib/format'
 
 type FixedCost = {
   id: number
@@ -43,11 +44,11 @@ export default function FixedCostsPage() {
     setError('')
     const parsedAmount = Number(amount)
     if (!name.trim()) {
-      setError('Name is required')
+      setError('Nama wajib diisi')
       return
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError('Amount must be > 0')
+      setError('Jumlah harus > 0')
       return
     }
 
@@ -79,22 +80,22 @@ export default function FixedCostsPage() {
 
   return (
     <main>
-      <h1>Fixed Costs</h1>
-      <p>Manual paid toggle for recurring costs.</p>
+      <h1>Biaya Tetap</h1>
+      <p>Toggle manual untuk biaya berulang.</p>
 
       <section>
         <div className="grid">
           <div>
-            <label htmlFor="fixed-name">Name</label>
+            <label htmlFor="fixed-name">Nama</label>
             <input
               id="fixed-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Rent"
+              placeholder="Sewa"
             />
           </div>
           <div>
-            <label htmlFor="fixed-amount">Amount (Rp)</label>
+            <label htmlFor="fixed-amount">Jumlah (Rp)</label>
             <input
               id="fixed-amount"
               type="number"
@@ -104,7 +105,7 @@ export default function FixedCostsPage() {
             />
           </div>
           <div>
-            <label htmlFor="paid-date">Paid Date (optional)</label>
+            <label htmlFor="paid-date">Tanggal Bayar (opsional)</label>
             <input
               id="paid-date"
               type="date"
@@ -114,29 +115,35 @@ export default function FixedCostsPage() {
           </div>
         </div>
         <div className="row" style={{ marginTop: 16 }}>
-          <button onClick={handleAdd}>Add Fixed Cost</button>
+          <button onClick={handleAdd}>Tambah Biaya Tetap</button>
         </div>
         {error && <p style={{ color: '#a4433f' }}>{error}</p>}
       </section>
 
       <section>
-        <h2 style={{ marginTop: 0 }}>List</h2>
+        <h2 style={{ marginTop: 0 }}>Daftar</h2>
         <div className="list">
-          {items.length === 0 && <div className="list-item">No fixed costs yet.</div>}
+          {items.length === 0 && (
+            <div className="list-item">Belum ada biaya tetap.</div>
+          )}
           {items.map((item) => (
             <div className="list-item" key={item.id}>
               <div>
                 <strong>{item.name}</strong>
-                <div style={{ color: '#706a63' }}>Rp {item.amount}</div>
+                <div style={{ color: '#706a63' }}>
+                  {formatRupiah(item.amount)}
+                </div>
               </div>
               <div className="row">
                 <span className="badge">
-                  {item.paid_date_local ? `Paid ${item.paid_date_local}` : 'Unpaid'}
+                  {item.paid_date_local
+                    ? `Lunas ${item.paid_date_local}`
+                    : 'Belum Lunas'}
                 </span>
                 <button className="secondary" onClick={() => handleTogglePaid(item)}>
-                  {item.paid_date_local ? 'Mark Unpaid' : 'Mark Paid'}
+                  {item.paid_date_local ? 'Batalkan Lunas' : 'Tandai Lunas'}
                 </button>
-                <button onClick={() => handleDelete(item)}>Delete</button>
+                <button onClick={() => handleDelete(item)}>Hapus</button>
               </div>
             </div>
           ))}

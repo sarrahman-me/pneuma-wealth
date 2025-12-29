@@ -48,22 +48,22 @@ export default function RulesPage() {
     setStatus('')
 
     if (config.min_floor > config.max_ceil) {
-      setError('min_floor must be <= max_ceil')
+      setError('Batas minimum harus <= batas maksimum')
       return
     }
     if (config.resilience_days < 1) {
-      setError('resilience_days must be >= 1')
+      setError('Hari ketahanan minimal 1')
       return
     }
     if (config.burn_pool_ratio < 0 || config.burn_pool_ratio > 100) {
-      setError('burn_pool_ratio must be between 0 and 100')
+      setError('Rasio burn pool harus antara 0 dan 100')
       return
     }
 
     try {
       const data = await invoke<Config>('update_config', { payload: config })
       setConfig(data)
-      setStatus('Saved')
+      setStatus('Tersimpan')
     } catch (err) {
       setError(String(err))
     }
@@ -71,13 +71,13 @@ export default function RulesPage() {
 
   return (
     <main>
-      <h1>Rules / Configuration</h1>
-      <p>Core parameters that drive pools and recommendations.</p>
+      <h1>Aturan / Konfigurasi</h1>
+      <p>Parameter inti untuk pool dan rekomendasi.</p>
 
       <section>
         <div className="grid">
           <div>
-            <label htmlFor="min-floor">Min Floor (Rp)</label>
+            <label htmlFor="min-floor">Batas Minimum (Rp)</label>
             <input
               id="min-floor"
               type="number"
@@ -86,7 +86,7 @@ export default function RulesPage() {
             />
           </div>
           <div>
-            <label htmlFor="max-ceil">Max Ceil (Rp)</label>
+            <label htmlFor="max-ceil">Batas Maksimum (Rp)</label>
             <input
               id="max-ceil"
               type="number"
@@ -95,7 +95,7 @@ export default function RulesPage() {
             />
           </div>
           <div>
-            <label htmlFor="resilience-days">Resilience Days</label>
+            <label htmlFor="resilience-days">Hari Ketahanan</label>
             <input
               id="resilience-days"
               type="number"
@@ -104,7 +104,7 @@ export default function RulesPage() {
             />
           </div>
           <div>
-            <label htmlFor="burn-ratio">Burn Pool Ratio (%)</label>
+            <label htmlFor="burn-ratio">Rasio Burn Pool (%)</label>
             <input
               id="burn-ratio"
               type="number"
@@ -115,7 +115,7 @@ export default function RulesPage() {
         </div>
 
         <div className="row" style={{ marginTop: 16 }}>
-          <button onClick={handleSave}>Save</button>
+          <button onClick={handleSave}>Simpan</button>
           {status && <span className="badge">{status}</span>}
         </div>
         {error && <p style={{ color: '#a4433f' }}>{error}</p>}
