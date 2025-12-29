@@ -262,6 +262,24 @@ fn list_recent_transactions(app: AppHandle, limit: u32) -> Result<Vec<Transactio
 }
 
 #[tauri::command(rename_all = "snake_case")]
+fn delete_transaction(app: AppHandle, transaction_id: i64) -> Result<(), String> {
+    if transaction_id <= 0 {
+        return Err("ID transaksi tidak valid".to_string());
+    }
+    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    let affected = conn
+        .execute(
+            "DELETE FROM transactions WHERE id = ?1",
+            params![transaction_id],
+        )
+        .map_err(|err| err.to_string())?;
+    if affected == 0 {
+        return Err("Transaksi tidak ditemukan".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
 fn get_config(app: AppHandle) -> Result<Config, String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
     fetch_config(&conn)
@@ -465,11 +483,13 @@ pub fn run() {
             db::init_db(app.handle())?;
             Ok(())
         })
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             add_income,
             add_expense,
             list_recent_transactions,
+            delete_transaction,
             get_config,
             update_config,
             list_fixed_costs,
