@@ -5,6 +5,9 @@ import Link from "next/link";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { formatRupiah } from "./lib/format";
+import CoachingInsightCard, {
+  type CoachingInsight,
+} from "./components/CoachingInsightCard";
 
 type Transaction = {
   id: number;
@@ -50,9 +53,12 @@ export default function Home() {
     overspent_today: false,
   });
   const [submitStatus, setSubmitStatus] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false);
+  const [insight, setInsight] = useState<CoachingInsight | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -86,11 +92,25 @@ export default function Home() {
     }
   }, []);
 
+  const refreshInsight = useCallback(async (showToast?: boolean) => {
+    setIsLoadingInsight(true);
+    try {
+      const data = await invoke<CoachingInsight>("get_coaching_insight");
+      setInsight(data);
+      if (showToast) {
+        setToastMessage(data.status_title);
+      }
+    } finally {
+      setIsLoadingInsight(false);
+    }
+  }, []);
+
   useEffect(() => {
     setDateLocal(todayString);
     refreshTransactions();
     refreshSummary();
-  }, [todayString, refreshTransactions, refreshSummary]);
+    refreshInsight();
+  }, [todayString, refreshTransactions, refreshSummary, refreshInsight]);
 
   useEffect(() => {
     if (!submitStatus) {
@@ -101,6 +121,16 @@ export default function Home() {
     }, 2000);
     return () => window.clearTimeout(timeout);
   }, [submitStatus]);
+
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setToastMessage("");
+    }, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
 
   const handleSubmit = async () => {
     const parsedAmount = Number(amount);
@@ -134,7 +164,11 @@ export default function Home() {
       });
       setAmount("");
       setSubmitStatus("Tercatat.");
-      await Promise.all([refreshTransactions(), refreshSummary()]);
+      await Promise.all([
+        refreshTransactions(),
+        refreshSummary(),
+        refreshInsight(true),
+      ]);
       if (amountInputRef.current) {
         amountInputRef.current.focus();
         amountInputRef.current.select();
@@ -179,6 +213,15 @@ export default function Home() {
         Pelacak keuangan lokal untuk mencatat transaksi dan ringkasan dana
         harian.
       </p>
+
+      <section>
+        {isLoadingInsight && !insight && (
+          <div className="insight-card">
+            <span className="skeleton-line" />
+          </div>
+        )}
+        {insight && <CoachingInsightCard insight={insight} />}
+      </section>
 
       <section className="home-hero">
         <div className="hero-grid">
@@ -284,6 +327,7 @@ export default function Home() {
           </div>
         </details>
         {submitStatus && <span className="pill pill-muted">{submitStatus}</span>}
+        {toastMessage && <div className="insight-toast">{toastMessage}</div>}
       </section>
 
       <section>

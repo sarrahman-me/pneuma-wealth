@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatRupiah } from "../lib/format";
+import CoachingInsightCard, {
+  type CoachingInsight,
+} from "../components/CoachingInsightCard";
 
 type PoolsSummary = {
   total_in: number;
@@ -46,13 +49,18 @@ const MetricCard = ({
 
 export default function PoolsPage() {
   const [summary, setSummary] = useState<PoolsSummary | null>(null);
+  const [insight, setInsight] = useState<CoachingInsight | null>(null);
   const [error, setError] = useState("");
 
   const refresh = async () => {
     setError("");
     try {
-      const data = await invoke<PoolsSummary>("get_pools_summary");
-      setSummary(data);
+      const [summaryData, insightData] = await Promise.all([
+        invoke<PoolsSummary>("get_pools_summary"),
+        invoke<CoachingInsight>("get_coaching_insight"),
+      ]);
+      setSummary(summaryData);
+      setInsight(insightData);
     } catch (err) {
       setError(String(err));
     }
@@ -125,6 +133,7 @@ export default function PoolsPage() {
             sadar ritmenya.
           </div>
         )}
+        {insight && <CoachingInsightCard insight={insight} compact />}
         {summary && (
           <div className="metric-grid">
             <MetricCard

@@ -1,4 +1,5 @@
 mod db;
+mod insight;
 
 use chrono::{Local, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
@@ -51,7 +52,7 @@ struct ConfigPayload {
 }
 
 #[derive(Serialize)]
-struct PoolsSummary {
+pub(crate) struct PoolsSummary {
     total_in: i64,
     total_out: i64,
     net_balance: i64,
@@ -93,7 +94,7 @@ fn floor_to_thousand(value: i64) -> i64 {
     }
 }
 
-fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
+pub(crate) fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
     let config = fetch_config(conn)?;
 
     let total_in: i64 = conn
@@ -748,6 +749,12 @@ fn get_pools_summary(app: AppHandle) -> Result<PoolsSummary, String> {
     compute_pools_summary(&conn)
 }
 
+#[tauri::command(rename_all = "snake_case")]
+fn get_coaching_insight(app: AppHandle) -> Result<insight::CoachingInsight, String> {
+    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    insight::compute_coaching_insight(&conn)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -771,7 +778,8 @@ pub fn run() {
             mark_fixed_cost_paid,
             mark_fixed_cost_unpaid,
             get_today_summary,
-            get_pools_summary
+            get_pools_summary,
+            get_coaching_insight
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
