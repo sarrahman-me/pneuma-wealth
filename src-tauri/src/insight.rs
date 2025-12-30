@@ -70,16 +70,6 @@ fn date_range_last_7_days(today_local: &str) -> Result<(String, String), String>
     ))
 }
 
-fn fetch_coach_mode(conn: &Connection) -> Result<String, String> {
-    let mode: Option<String> = conn
-        .query_row("SELECT coach_mode FROM config WHERE id = 1", [], |row| {
-            row.get(0)
-        })
-        .optional()
-        .map_err(|err| err.to_string())?;
-    Ok(mode.unwrap_or_else(|| "calm".to_string()))
-}
-
 fn build_time_context(
     now_local: DateTime<Local>,
     tx_count_today: i64,
@@ -254,7 +244,11 @@ fn compute_coaching_insight_with_time(
         )
         .map_err(|err| err.to_string())?;
 
-    let coach_mode = fetch_coach_mode(conn)?;
+    let auto_mode = if summary.net_balance < summary.target_penyangga {
+        "watchful".to_string()
+    } else {
+        "calm".to_string()
+    };
     let last_memory = fetch_last_memory(conn)?;
     let has_memory_today = fetch_memory_for_date(conn, &today_local)?.is_some();
     let time_context = build_time_context(now_local, tx_count_today, has_memory_today);
@@ -269,17 +263,17 @@ fn compute_coaching_insight_with_time(
         fixed_cost_unpaid_count_month,
         fixed_cost_unpaid_amount_month,
     };
-    let mut insight = select_insight_rule(&inputs, &coach_mode, &time_context);
+    let mut insight = select_insight_rule(&inputs, &auto_mode, &time_context);
     insight.continuity_line =
         build_continuity_line(&time_context, last_memory.as_ref(), &insight.tone);
     insight.memory_reflection = build_memory_reflection(last_memory.as_ref(), &today_local);
-    insight.coach_mode = coach_mode.clone();
+    insight.coach_mode = auto_mode.clone();
 
     maybe_record_memory(
         conn,
         &inputs,
         &insight,
-        &coach_mode,
+        &auto_mode,
         last_memory.as_ref(),
         &today_local,
     )?;
@@ -829,10 +823,22 @@ mod tests {
     }
 
     #[test]
-    fn watchful_mode_changes_overspent_copy() {
+    fn auto_mode_watchful_when_buffer_not_safe() {
         let conn = setup_conn(100, 1000, 10);
-        conn.execute("UPDATE config SET coach_mode = 'watchful' WHERE id = 1", [])
-            .expect("set mode");
+        insert_tx(&conn, "2025-05-10", "IN", 500);
+        insert_tx(&conn, "2025-05-10", "OUT", 200);
+        insert_tx(&conn, "2025-05-09", "IN", 200);
+        insert_tx(&conn, "2025-05-08", "IN", 200);
+        insert_tx(&conn, "2025-05-07", "IN", 200);
+        insert_tx(&conn, "2025-05-06", "IN", 200);
+
+        let insight = compute_for(&conn, "2025-05-10", 19);
+        assert_eq!(insight.coach_mode, "watchful");
+    }
+
+    #[test]
+    fn auto_mode_calm_when_buffer_safe() {
+        let conn = setup_conn(100, 1000, 10);
         insert_tx(&conn, "2025-05-10", "IN", 2000);
         insert_tx(&conn, "2025-05-10", "OUT", 200);
         insert_tx(&conn, "2025-05-09", "IN", 200);
@@ -841,9 +847,7 @@ mod tests {
         insert_tx(&conn, "2025-05-06", "IN", 200);
 
         let insight = compute_for(&conn, "2025-05-10", 19);
-        assert_eq!(insight.debug_meta.unwrap().rule_id, "overspent_today");
-        assert!(insight.next_step.contains("hentikan pengeluaran"));
-        assert_eq!(insight.coach_mode, "watchful");
+        assert_eq!(insight.coach_mode, "calm");
     }
 
     #[test]
