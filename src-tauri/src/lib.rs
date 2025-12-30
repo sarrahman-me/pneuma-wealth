@@ -178,6 +178,23 @@ fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
     })
 }
 
+fn cleanup_fixed_cost_payments(conn: &Connection) -> Result<(), String> {
+    conn.execute("DELETE FROM fixed_cost_payments WHERE tx_id IS NULL", [])
+        .map_err(|err| err.to_string())?;
+    conn.execute(
+        "DELETE FROM fixed_cost_payments
+         WHERE tx_id IS NOT NULL
+           AND tx_id NOT IN (
+             SELECT id FROM transactions
+             WHERE kind = 'OUT' AND source = 'fixed_cost'
+               AND fixed_cost_id = fixed_cost_payments.fixed_cost_id
+           )",
+        [],
+    )
+    .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
 fn fetch_config(conn: &Connection) -> Result<Config, String> {
     conn.query_row(
         "SELECT min_floor, max_ceil, resilience_days FROM config WHERE id = 1",
@@ -228,6 +245,98 @@ fn fetch_fixed_cost_for_period(
         },
     )
     .map_err(|err| err.to_string())
+}
+
+fn resolve_period_for_unpaid(
+    conn: &Connection,
+    fixed_cost_id: i64,
+    paid_date_local: Option<String>,
+) -> Result<String, String> {
+    let desired_period = paid_date_local
+        .as_deref()
+        .map(period_ym_from_date)
+        .unwrap_or_else(|| Local::now().format("%Y-%m").to_string());
+
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT period_ym FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
+            params![fixed_cost_id, &desired_period],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|err| err.to_string())?;
+
+    if let Some(period) = existing {
+        return Ok(period);
+    }
+
+    let fallback: Option<String> = conn
+        .query_row(
+            "SELECT period_ym FROM fixed_cost_payments WHERE fixed_cost_id = ?1 ORDER BY period_ym DESC LIMIT 1",
+            params![fixed_cost_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|err| err.to_string())?;
+
+    Ok(fallback.unwrap_or(desired_period))
+}
+
+fn mark_fixed_cost_unpaid_with_conn(
+    conn: &mut Connection,
+    fixed_cost_id: i64,
+    paid_date_local: Option<String>,
+) -> Result<FixedCost, String> {
+    let paid_date_local = paid_date_local.map(|value| resolve_date_local(Some(value)));
+    let period_ym = resolve_period_for_unpaid(conn, fixed_cost_id, paid_date_local)?;
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+
+    let tx_id: Option<Option<i64>> = tx
+        .query_row(
+            "SELECT tx_id FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
+            params![fixed_cost_id, &period_ym],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|err| err.to_string())?;
+
+    if let Some(Some(tx_id)) = tx_id {
+        tx.execute("DELETE FROM transactions WHERE id = ?1", params![tx_id])
+            .map_err(|err| err.to_string())?;
+    }
+
+    tx.execute(
+        "DELETE FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
+        params![fixed_cost_id, &period_ym],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.commit().map_err(|err| err.to_string())?;
+
+    fetch_fixed_cost_for_period(conn, fixed_cost_id, &period_ym)
+}
+
+fn delete_transaction_with_conn(conn: &mut Connection, transaction_id: i64) -> Result<(), String> {
+    if transaction_id <= 0 {
+        return Err("ID transaksi tidak valid".to_string());
+    }
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+    tx.execute(
+        "DELETE FROM fixed_cost_payments WHERE tx_id = ?1",
+        params![transaction_id],
+    )
+    .map_err(|err| err.to_string())?;
+    let affected = tx
+        .execute(
+            "DELETE FROM transactions WHERE id = ?1",
+            params![transaction_id],
+        )
+        .map_err(|err| err.to_string())?;
+    if affected == 0 {
+        return Err("Transaksi tidak ditemukan".to_string());
+    }
+    tx.commit().map_err(|err| err.to_string())?;
+    Ok(())
 }
 fn insert_transaction(
     app: AppHandle,
@@ -389,25 +498,7 @@ fn delete_transaction(app: AppHandle, transaction_id: i64) -> Result<(), String>
         return Err("ID transaksi tidak valid".to_string());
     }
     let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
-    let tx = conn.transaction().map_err(|err| err.to_string())?;
-    tx.execute(
-        "UPDATE fixed_cost_payments
-         SET paid_date_local = NULL, paid_ts_utc = NULL, tx_id = NULL
-         WHERE tx_id = ?1",
-        params![transaction_id],
-    )
-    .map_err(|err| err.to_string())?;
-    let affected = tx
-        .execute(
-            "DELETE FROM transactions WHERE id = ?1",
-            params![transaction_id],
-        )
-        .map_err(|err| err.to_string())?;
-    if affected == 0 {
-        return Err("Transaksi tidak ditemukan".to_string());
-    }
-    tx.commit().map_err(|err| err.to_string())?;
-    Ok(())
+    delete_transaction_with_conn(&mut conn, transaction_id)
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -447,6 +538,7 @@ fn update_config(app: AppHandle, payload: ConfigPayload) -> Result<Config, Strin
 fn list_fixed_costs(app: AppHandle) -> Result<Vec<FixedCost>, String> {
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
     let period_ym = Local::now().format("%Y-%m").to_string();
+    cleanup_fixed_cost_payments(&conn)?;
     let mut stmt = conn
         .prepare(
             "SELECT fc.id, fc.name, fc.amount, fc.is_active, p.paid_date_local, p.paid_ts_utc, p.tx_id
@@ -535,10 +627,28 @@ fn mark_fixed_cost_paid(
     fixed_cost_id: i64,
     paid_date_local: Option<String>,
 ) -> Result<FixedCost, String> {
+    let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    mark_fixed_cost_paid_with_conn(&mut conn, fixed_cost_id, paid_date_local)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn mark_fixed_cost_unpaid(
+    app: AppHandle,
+    fixed_cost_id: i64,
+    paid_date_local: Option<String>,
+) -> Result<FixedCost, String> {
+    let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    mark_fixed_cost_unpaid_with_conn(&mut conn, fixed_cost_id, paid_date_local)
+}
+
+fn mark_fixed_cost_paid_with_conn(
+    conn: &mut Connection,
+    fixed_cost_id: i64,
+    paid_date_local: Option<String>,
+) -> Result<FixedCost, String> {
     let paid_date_local = resolve_date_local(paid_date_local);
     let period_ym = period_ym_from_date(&paid_date_local);
     let paid_ts_utc = Utc::now().timestamp_millis();
-    let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
     let tx = conn.transaction().map_err(|err| err.to_string())?;
 
     let amount = fetch_fixed_cost_amount(&tx, fixed_cost_id)?;
@@ -558,8 +668,9 @@ fn mark_fixed_cost_paid(
     if let Some(Some(tx_id)) = existing_payment {
         let tx_exists: i64 = tx
             .query_row(
-                "SELECT COUNT(*) FROM transactions WHERE id = ?1",
-                [tx_id],
+                "SELECT COUNT(*) FROM transactions
+                 WHERE id = ?1 AND kind = 'OUT' AND source = 'fixed_cost' AND fixed_cost_id = ?2",
+                params![tx_id, fixed_cost_id],
                 |row| row.get(0),
             )
             .map_err(|err| err.to_string())?;
@@ -572,13 +683,17 @@ fn mark_fixed_cost_paid(
             )
             .map_err(|err| err.to_string())?;
             tx.commit().map_err(|err| err.to_string())?;
-            return fetch_fixed_cost_for_period(&conn, fixed_cost_id, &period_ym);
+            return fetch_fixed_cost_for_period(conn, fixed_cost_id, &period_ym);
         }
 
         tx.execute(
-            "UPDATE fixed_cost_payments
-             SET paid_date_local = NULL, paid_ts_utc = NULL, tx_id = NULL
-             WHERE fixed_cost_id = ?1 AND period_ym = ?2",
+            "DELETE FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
+            params![fixed_cost_id, &period_ym],
+        )
+        .map_err(|err| err.to_string())?;
+    } else if existing_payment.is_some() {
+        tx.execute(
+            "DELETE FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
             params![fixed_cost_id, &period_ym],
         )
         .map_err(|err| err.to_string())?;
@@ -611,48 +726,7 @@ fn mark_fixed_cost_paid(
 
     tx.commit().map_err(|err| err.to_string())?;
 
-    fetch_fixed_cost_for_period(&conn, fixed_cost_id, &period_ym)
-}
-
-#[tauri::command(rename_all = "snake_case")]
-fn mark_fixed_cost_unpaid(
-    app: AppHandle,
-    fixed_cost_id: i64,
-    paid_date_local: Option<String>,
-) -> Result<FixedCost, String> {
-    let paid_date_local = paid_date_local.map(|value| resolve_date_local(Some(value)));
-    let period_ym = paid_date_local
-        .as_deref()
-        .map(period_ym_from_date)
-        .unwrap_or_else(|| Local::now().format("%Y-%m").to_string());
-
-    let mut conn = db::open_connection(&app).map_err(|err| err.to_string())?;
-    let tx = conn.transaction().map_err(|err| err.to_string())?;
-
-    let tx_id: Option<Option<i64>> = tx
-        .query_row(
-            "SELECT tx_id FROM fixed_cost_payments WHERE fixed_cost_id = ?1 AND period_ym = ?2",
-            params![fixed_cost_id, &period_ym],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|err| err.to_string())?;
-
-    if let Some(Some(tx_id)) = tx_id {
-        tx.execute("DELETE FROM transactions WHERE id = ?1", params![tx_id])
-            .map_err(|err| err.to_string())?;
-        tx.execute(
-            "UPDATE fixed_cost_payments
-             SET paid_date_local = NULL, paid_ts_utc = NULL, tx_id = NULL
-             WHERE fixed_cost_id = ?1 AND period_ym = ?2",
-            params![fixed_cost_id, &period_ym],
-        )
-        .map_err(|err| err.to_string())?;
-    }
-
-    tx.commit().map_err(|err| err.to_string())?;
-
-    fetch_fixed_cost_for_period(&conn, fixed_cost_id, &period_ym)
+    fetch_fixed_cost_for_period(conn, fixed_cost_id, &period_ym)
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -742,6 +816,37 @@ mod tests {
         conn
     }
 
+    fn setup_fixed_cost_schema(conn: &Connection) {
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+            CREATE TABLE fixed_costs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              amount INTEGER NOT NULL,
+              is_active INTEGER NOT NULL DEFAULT 1
+            );
+            CREATE TABLE transactions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              ts_utc INTEGER NOT NULL,
+              date_local TEXT NOT NULL,
+              kind TEXT NOT NULL,
+              amount INTEGER NOT NULL,
+              source TEXT NOT NULL DEFAULT 'manual',
+              fixed_cost_id INTEGER
+            );
+            CREATE TABLE fixed_cost_payments (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              fixed_cost_id INTEGER NOT NULL,
+              period_ym TEXT NOT NULL,
+              paid_date_local TEXT NOT NULL,
+              paid_ts_utc INTEGER NOT NULL,
+              tx_id INTEGER,
+              FOREIGN KEY(fixed_cost_id) REFERENCES fixed_costs(id)
+            );",
+        )
+        .expect("create schema");
+    }
+
     fn insert_tx(conn: &Connection, kind: &str, amount: i64) {
         let date_local = Local::now().format("%Y-%m-%d").to_string();
         conn.execute(
@@ -813,5 +918,200 @@ mod tests {
 
         let summary = compute_pools_summary(&conn).expect("summary");
         assert_eq!(summary.hari_ketahanan_stop_pemasukan, 0);
+    }
+
+    #[test]
+    fn unpaid_deletes_payment_and_transaction_on_legacy_not_null() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory");
+        setup_fixed_cost_schema(&conn);
+
+        conn.execute(
+            "INSERT INTO fixed_costs (name, amount, is_active) VALUES ('Internet', 150000, 1)",
+            [],
+        )
+        .expect("insert fixed_cost");
+        let fixed_cost_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO transactions (ts_utc, date_local, kind, amount, source, fixed_cost_id)
+             VALUES (?1, '2025-01-10', 'OUT', 150000, 'fixed_cost', ?2)",
+            params![Utc::now().timestamp_millis(), fixed_cost_id],
+        )
+        .expect("insert tx");
+        let tx_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-01', '2025-01-10', ?2, ?3)",
+            params![fixed_cost_id, Utc::now().timestamp_millis(), tx_id],
+        )
+        .expect("insert payment");
+
+        let result =
+            mark_fixed_cost_unpaid_with_conn(&mut conn, fixed_cost_id, None).expect("unpaid");
+        assert!(result.paid_date_local.is_none());
+        let payment_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM fixed_cost_payments WHERE fixed_cost_id = ?1",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("count payments");
+        assert_eq!(payment_count, 0);
+        let tx_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM transactions WHERE id = ?1",
+                [tx_id],
+                |row| row.get(0),
+            )
+            .expect("count tx");
+        assert_eq!(tx_count, 0);
+    }
+
+    #[test]
+    fn unpaid_uses_latest_period_when_none_provided() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory");
+        setup_fixed_cost_schema(&conn);
+        conn.execute(
+            "INSERT INTO fixed_costs (name, amount, is_active) VALUES ('Sewa', 500000, 1)",
+            [],
+        )
+        .expect("insert fixed_cost");
+        let fixed_cost_id = conn.last_insert_rowid();
+
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-01', '2025-01-05', 1, NULL)",
+            [fixed_cost_id],
+        )
+        .expect("insert old payment");
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-02', '2025-02-05', 1, NULL)",
+            [fixed_cost_id],
+        )
+        .expect("insert latest payment");
+
+        let _ = mark_fixed_cost_unpaid_with_conn(&mut conn, fixed_cost_id, None).expect("unpaid");
+        let remaining: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM fixed_cost_payments WHERE fixed_cost_id = ?1",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("count payments");
+        assert_eq!(remaining, 1);
+        let period: String = conn
+            .query_row(
+                "SELECT period_ym FROM fixed_cost_payments WHERE fixed_cost_id = ?1",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("fetch period");
+        assert_eq!(period, "2025-01");
+    }
+
+    #[test]
+    fn paid_recreates_payment_when_tx_missing() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory");
+        setup_fixed_cost_schema(&conn);
+        conn.execute(
+            "INSERT INTO fixed_costs (name, amount, is_active) VALUES ('Listrik', 200000, 1)",
+            [],
+        )
+        .expect("insert fixed_cost");
+        let fixed_cost_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-03', '2025-03-10', 1, 999)",
+            [fixed_cost_id],
+        )
+        .expect("insert stale payment");
+
+        let result = mark_fixed_cost_paid_with_conn(
+            &mut conn,
+            fixed_cost_id,
+            Some("2025-03-10".to_string()),
+        )
+        .expect("paid");
+        assert!(result.paid_date_local.is_some());
+        let payment_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM fixed_cost_payments WHERE fixed_cost_id = ?1",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("count payments");
+        assert_eq!(payment_count, 1);
+        let tx_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM transactions WHERE fixed_cost_id = ?1 AND source = 'fixed_cost' AND kind = 'OUT'",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("count tx");
+        assert_eq!(tx_count, 1);
+    }
+
+    #[test]
+    fn delete_transaction_removes_payment_row() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory");
+        setup_fixed_cost_schema(&conn);
+        conn.execute(
+            "INSERT INTO fixed_costs (name, amount, is_active) VALUES ('Air', 100000, 1)",
+            [],
+        )
+        .expect("insert fixed_cost");
+        let fixed_cost_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO transactions (ts_utc, date_local, kind, amount, source, fixed_cost_id)
+             VALUES (1, '2025-04-01', 'OUT', 100000, 'fixed_cost', ?1)",
+            [fixed_cost_id],
+        )
+        .expect("insert tx");
+        let tx_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-04', '2025-04-01', 1, ?2)",
+            params![fixed_cost_id, tx_id],
+        )
+        .expect("insert payment");
+
+        delete_transaction_with_conn(&mut conn, tx_id).expect("delete tx");
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM fixed_cost_payments WHERE tx_id = ?1",
+                [tx_id],
+                |row| row.get(0),
+            )
+            .expect("count payment");
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn unpaid_is_idempotent() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory");
+        setup_fixed_cost_schema(&conn);
+        conn.execute(
+            "INSERT INTO fixed_costs (name, amount, is_active) VALUES ('Wifi', 250000, 1)",
+            [],
+        )
+        .expect("insert fixed_cost");
+        let fixed_cost_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO fixed_cost_payments (fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+             VALUES (?1, '2025-05', '2025-05-01', 1, NULL)",
+            [fixed_cost_id],
+        )
+        .expect("insert payment");
+
+        mark_fixed_cost_unpaid_with_conn(&mut conn, fixed_cost_id, None).expect("unpaid");
+        mark_fixed_cost_unpaid_with_conn(&mut conn, fixed_cost_id, None).expect("unpaid again");
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM fixed_cost_payments WHERE fixed_cost_id = ?1",
+                [fixed_cost_id],
+                |row| row.get(0),
+            )
+            .expect("count payments");
+        assert_eq!(count, 0);
     }
 }

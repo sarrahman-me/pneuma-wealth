@@ -61,6 +61,7 @@ pub fn init_db(app: &AppHandle) -> AnyResult<()> {
     ensure_transactions_columns(&conn)?;
     ensure_fixed_cost_columns(&conn)?;
     ensure_fixed_cost_payments_columns(&conn)?;
+    ensure_fixed_cost_payments_nullable(&conn)?;
     ensure_fixed_cost_payments_index(&conn)?;
     migrate_legacy_fixed_cost_payments(&conn)?;
     Ok(())
@@ -153,6 +154,34 @@ fn ensure_fixed_cost_payments_index(conn: &Connection) -> AnyResult<()> {
     Ok(())
 }
 
+fn ensure_fixed_cost_payments_nullable(conn: &Connection) -> AnyResult<()> {
+    if !column_is_not_null(conn, "fixed_cost_payments", "paid_date_local")? {
+        return Ok(());
+    }
+
+    // Legacy DBs had paid_date_local NOT NULL; rebuild to allow NULL for unpaid rows.
+    conn.execute_batch(
+        "PRAGMA foreign_keys = OFF;
+        CREATE TABLE fixed_cost_payments_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fixed_cost_id INTEGER NOT NULL,
+          period_ym TEXT NOT NULL,
+          paid_date_local TEXT,
+          paid_ts_utc INTEGER,
+          tx_id INTEGER,
+          FOREIGN KEY(fixed_cost_id) REFERENCES fixed_costs(id)
+        );
+        INSERT INTO fixed_cost_payments_new (id, fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id)
+          SELECT id, fixed_cost_id, period_ym, paid_date_local, paid_ts_utc, tx_id FROM fixed_cost_payments;
+        DROP TABLE fixed_cost_payments;
+        ALTER TABLE fixed_cost_payments_new RENAME TO fixed_cost_payments;
+        PRAGMA foreign_keys = ON;",
+    )?;
+
+    ensure_fixed_cost_payments_index(conn)?;
+    Ok(())
+}
+
 fn migrate_legacy_fixed_cost_payments(conn: &Connection) -> AnyResult<()> {
     if table_has_column(conn, "fixed_costs", "paid_date_local")? {
         conn.execute(
@@ -185,4 +214,64 @@ fn table_has_column(conn: &Connection, table: &str, column: &str) -> AnyResult<b
         }
     }
     Ok(false)
+}
+
+fn column_is_not_null(conn: &Connection, table: &str, column: &str) -> AnyResult<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let name: String = row.get(1)?;
+        let not_null: i64 = row.get(3)?;
+        if name == column {
+            return Ok(not_null == 1);
+        }
+    }
+    Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rebuild_fixed_cost_payments_when_paid_date_not_null() {
+        let conn = Connection::open_in_memory().expect("open");
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+            CREATE TABLE fixed_costs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              amount INTEGER NOT NULL,
+              is_active INTEGER NOT NULL DEFAULT 1
+            );
+            CREATE TABLE fixed_cost_payments (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              fixed_cost_id INTEGER NOT NULL,
+              period_ym TEXT NOT NULL,
+              paid_date_local TEXT NOT NULL,
+              paid_ts_utc INTEGER NOT NULL,
+              tx_id INTEGER,
+              FOREIGN KEY(fixed_cost_id) REFERENCES fixed_costs(id)
+            );
+            CREATE UNIQUE INDEX idx_fixed_cost_payments_period
+            ON fixed_cost_payments(fixed_cost_id, period_ym);",
+        )
+        .expect("create legacy schema");
+
+        ensure_fixed_cost_payments_nullable(&conn).expect("migrate");
+
+        let not_null = column_is_not_null(&conn, "fixed_cost_payments", "paid_date_local")
+            .expect("check not null");
+        assert!(!not_null);
+
+        let index_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_index_list('fixed_cost_payments')
+                 WHERE name = 'idx_fixed_cost_payments_period'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("index count");
+        assert_eq!(index_count, 1);
+    }
 }
