@@ -8,7 +8,8 @@
     "build": "next build",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck",
+    "ui:smoke": "node scripts/ui-smoke.mjs",
+    "check": "npm run lint && npm run typecheck && npm run ui:smoke",
     "tauri": "tauri"
   },
   "dependencies": {

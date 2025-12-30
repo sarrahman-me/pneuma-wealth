@@ -2,6 +2,7 @@
   color-scheme: light;
 }
 
+/* Base */
 * {
   box-sizing: border-box;
 }
@@ -13,6 +14,7 @@ body {
   color: #1c1b19;
 }
 
+/* Layout */
 .app-shell {
   min-height: 100vh;
 }
@@ -65,6 +67,13 @@ section {
   box-shadow: 0 12px 30px rgba(28, 27, 25, 0.08);
 }
 
+.row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Controls */
 label {
   display: block;
   font-weight: 600;
@@ -97,17 +106,116 @@ button {
   color: #f6f3ee;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 button.secondary {
   background: #d7cbb8;
   color: #1c1b19;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+.link-button {
+  background: transparent;
+  border: none;
+  color: #1c1b19;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
+.segmented {
+  display: inline-flex;
+  background: #f2ece3;
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.segmented button {
+  background: transparent;
+  color: #1c1b19;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.segmented button.active {
+  background: #1c1b19;
+  color: #f6f3ee;
+}
+
+.inline-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #6d655d;
+  list-style: none;
+}
+
+.inline-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.inline-details summary::after {
+  content: "Buka";
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: 8px;
+  color: #8a8076;
+}
+
+.inline-details[open] summary::after {
+  content: "Tutup";
+}
+
+.inline-details-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Hero */
+.home-hero {
+  padding: 18px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.hero-card {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e6ddcf;
+  background: #fbfaf8;
+  box-shadow: 0 12px 24px rgba(28, 27, 25, 0.08);
+}
+
+.hero-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6d655d;
+  font-weight: 700;
+}
+
+.hero-value {
+  margin-top: 6px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.hero-warn {
+  border-color: #d8b6a8;
+  background: #f6eee8;
+}
+
+/* Metrics */
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -232,76 +340,10 @@ button.secondary {
   font-weight: 600;
 }
 
-.pools-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.home-hero {
-  padding: 18px;
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.hero-card {
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid #e6ddcf;
-  background: #fbfaf8;
-  box-shadow: 0 12px 24px rgba(28, 27, 25, 0.08);
-}
-
-.hero-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #6d655d;
-  font-weight: 700;
-}
-
-.hero-value {
-  margin-top: 6px;
-  font-size: 26px;
-  font-weight: 700;
-}
-
-.hero-warn {
-  border-color: #d8b6a8;
-  background: #f6eee8;
-}
-
+/* Transactions */
 .quick-entry {
   display: grid;
   gap: 14px;
-}
-
-.segmented {
-  display: inline-flex;
-  background: #f2ece3;
-  border-radius: 999px;
-  padding: 4px;
-  gap: 4px;
-}
-
-.segmented button {
-  background: transparent;
-  color: #1c1b19;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.segmented button.active {
-  background: #1c1b19;
-  color: #f6f3ee;
 }
 
 .quick-entry-body {
@@ -316,36 +358,6 @@ button.secondary {
   font-weight: 700;
   padding: 14px 16px;
   border-radius: 12px;
-}
-
-.inline-details summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: #6d655d;
-  list-style: none;
-}
-
-.inline-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.inline-details summary::after {
-  content: "Buka";
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-left: 8px;
-  color: #8a8076;
-}
-
-.inline-details[open] summary::after {
-  content: "Tutup";
-}
-
-.inline-details-body {
-  margin-top: 10px;
-  display: grid;
-  gap: 8px;
 }
 
 .tx-header {
@@ -432,16 +444,7 @@ button.secondary {
   color: #6d655d;
 }
 
-.link-button {
-  background: transparent;
-  border: none;
-  color: #1c1b19;
-  font-weight: 600;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
+/* History */
 .history-toolbar {
   display: flex;
   align-items: center;
@@ -465,6 +468,17 @@ button.secondary {
   margin-top: 16px;
 }
 
+/* Pools */
+.pools-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Rules */
 .rules-hero {
   padding: 18px;
 }
@@ -497,6 +511,7 @@ button.secondary {
   font-weight: 600;
 }
 
+/* Fixed Costs */
 .fixed-form .metric-card {
   display: grid;
   gap: 14px;
@@ -536,40 +551,4 @@ button.secondary {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #ede6db;
-  font-size: 13px;
-}
-
-.list {
-  display: grid;
-  gap: 8px;
-}
-
-.list-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #eee7dc;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fbfaf8;
-  font-size: 14px;
-}
-
-.list-item span {
-  color: #706a63;
 }
