@@ -62,6 +62,12 @@ export default function PoolsPage() {
     refresh();
   }, []);
 
+  const showSoftWarn =
+    summary &&
+    summary.recommended_spend_today > 0 &&
+    summary.today_out >= summary.recommended_spend_today * 0.8 &&
+    !summary.overspent_today;
+
   return (
     <main>
       <h1>Ringkasan Dana</h1>
@@ -99,6 +105,26 @@ export default function PoolsPage() {
             </p>
           </div>
         </details>
+        {summary && summary.total_in === 0 && summary.total_out === 0 && (
+          <div className="empty-state">
+            <div className="empty-title">Belum ada transaksi.</div>
+            <div className="empty-desc">
+              Mulai catat pemasukan atau pengeluaran agar ringkasan dana lebih terasa.
+            </div>
+          </div>
+        )}
+        {summary?.overspent_today && (
+          <div className="soft-warn">
+            Hari ini melewati rekomendasi. Tidak apa-apa—yang penting tercatat. Besok kita atur
+            lagi.
+          </div>
+        )}
+        {showSoftWarn && (
+          <div className="soft-warn">
+            Mendekati batas hari ini. Kalau masih perlu belanja, tetap catat ya — biar kamu tetap
+            sadar ritmenya.
+          </div>
+        )}
         {summary && (
           <div className="metric-grid">
             <MetricCard
@@ -175,6 +201,12 @@ export default function PoolsPage() {
               value={String(summary.hari_ketahanan_stop_pemasukan)}
               description="Perkiraan berapa hari saldo cukup jika tidak ada pemasukan baru."
             />
+          </div>
+        )}
+        {summary && (
+          <div className="metric-desc" style={{ marginTop: 12 }}>
+            Rekomendasi harian dibulatkan ke bawah agar lebih nyaman dipakai. Selisihnya otomatis
+            kembali menjadi ruang fleksibel.
           </div>
         )}
       </section>

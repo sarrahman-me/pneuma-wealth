@@ -85,6 +85,14 @@ fn clamp_i64(value: i64, min: i64, max: i64) -> i64 {
     }
 }
 
+fn floor_to_thousand(value: i64) -> i64 {
+    if value <= 0 {
+        0
+    } else {
+        (value / 1_000) * 1_000
+    }
+}
+
 fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
     let config = fetch_config(conn)?;
 
@@ -124,8 +132,14 @@ fn compute_pools_summary(conn: &Connection) -> Result<PoolsSummary, String> {
     } else {
         0
     };
-    let recommended_spend_today =
-        clamp_i64(recommended_spend_today_raw, min_bound, config.max_ceil);
+    let clamped = clamp_i64(recommended_spend_today_raw, min_bound, config.max_ceil);
+    // Rounded for UX; if min_floor isn't a round thousand, keep min_floor when penyangga tercapai.
+    let rounded = floor_to_thousand(clamped);
+    let recommended_spend_today = if penyangga_tercapai {
+        std::cmp::max(min_bound, rounded)
+    } else {
+        rounded
+    };
 
     let today_local = Local::now().format("%Y-%m-%d").to_string();
     let today_out: i64 = conn
@@ -760,6 +774,33 @@ mod tests {
     fn recommended_can_be_below_min_floor_when_penyangga_belum_aman() {
         let conn = setup_conn(100, 500, 10);
         insert_tx(&conn, "IN", 500);
+
+        let summary = compute_pools_summary(&conn).expect("summary");
+        assert_eq!(summary.recommended_spend_today, 0);
+    }
+
+    #[test]
+    fn recommended_floor_to_thousand() {
+        let conn = setup_conn(0, 100_000, 1);
+        insert_tx(&conn, "IN", 29_285);
+
+        let summary = compute_pools_summary(&conn).expect("summary");
+        assert_eq!(summary.recommended_spend_today, 29_000);
+    }
+
+    #[test]
+    fn recommended_respects_min_floor_when_not_round() {
+        let conn = setup_conn(20_500, 100_000, 1);
+        insert_tx(&conn, "IN", 20_700);
+
+        let summary = compute_pools_summary(&conn).expect("summary");
+        assert_eq!(summary.recommended_spend_today, 20_500);
+    }
+
+    #[test]
+    fn recommended_rounds_down_when_penyangga_belum_aman() {
+        let conn = setup_conn(1_000, 100_000, 2);
+        insert_tx(&conn, "IN", 1_500);
 
         let summary = compute_pools_summary(&conn).expect("summary");
         assert_eq!(summary.recommended_spend_today, 0);

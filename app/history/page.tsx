@@ -150,12 +150,24 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {status && <div className="metric-desc">{status}</div>}
+        {status && <span className="pill pill-muted">{status}</span>}
         {error && <div className="metric-error">{error}</div>}
 
         <div className="tx-list">
-          {items.length === 0 && !loading && (
-            <div className="tx-empty">Belum ada transaksi di rentang ini.</div>
+          {loading && items.length === 0 && (
+            <div className="skeleton">
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+            </div>
+          )}
+          {!loading && items.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-title">Kosong untuk rentang ini.</div>
+              <div className="empty-desc">
+                Coba ganti ke 30 hari atau pilih “Semua” untuk melihat lebih banyak.
+              </div>
+            </div>
           )}
           {items.map((tx) => (
             <div className="tx-row" key={tx.id}>

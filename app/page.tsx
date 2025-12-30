@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
@@ -50,26 +50,40 @@ export default function Home() {
     overspent_today: false,
   });
   const [submitStatus, setSubmitStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const amountInputRef = useRef<HTMLInputElement | null>(null);
 
   const todayString = useMemo(() => formatLocalDate(new Date()), []);
 
   const refreshTransactions = useCallback(async () => {
-    const data = await invoke<Transaction[]>("list_transactions_between", {
-      start_date: todayString,
-      end_date: todayString,
-      limit: 50,
-      offset: 0,
-      kind: null,
-    });
-    setTransactions(data);
+    setIsLoadingTransactions(true);
+    try {
+      const data = await invoke<Transaction[]>("list_transactions_between", {
+        start_date: todayString,
+        end_date: todayString,
+        limit: 50,
+        offset: 0,
+        kind: null,
+      });
+      setTransactions(data);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
   }, [todayString]);
 
   const refreshSummary = useCallback(async () => {
-    const data = await invoke<TodaySummary>("get_today_summary");
-    setSummary(data);
+    setIsLoadingSummary(true);
+    try {
+      const data = await invoke<TodaySummary>("get_today_summary");
+      setSummary(data);
+    } finally {
+      setIsLoadingSummary(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -78,20 +92,56 @@ export default function Home() {
     refreshSummary();
   }, [todayString, refreshTransactions, refreshSummary]);
 
+  useEffect(() => {
+    if (!submitStatus) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setSubmitStatus("");
+    }, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [submitStatus]);
+
   const handleSubmit = async () => {
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return;
     }
+    const resolvedDate = dateLocal || todayString;
+    const isToday = resolvedDate === todayString;
+    const willOverspend =
+      isToday &&
+      activeKind === "OUT" &&
+      (summary.overspent_today ||
+        summary.today_out + Math.trunc(parsedAmount) >
+          summary.recommended_spend_today);
+    if (willOverspend) {
+      const confirmed = await confirm(
+        "Kamu sudah melewati rekomendasi belanja hari ini. Tetap catat pengeluaran ini?",
+        { title: "Lewat rekomendasi hari ini", kind: "warning" },
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
     setSubmitStatus("");
+    setIsSubmitting(true);
     const command = activeKind === "OUT" ? "add_expense" : "add_income";
-    await invoke(command, {
-      amount: Math.trunc(parsedAmount),
-      date_local: dateLocal || todayString,
-    });
-    setAmount("");
-    setSubmitStatus("Tersimpan.");
-    await Promise.all([refreshTransactions(), refreshSummary()]);
+    try {
+      await invoke(command, {
+        amount: Math.trunc(parsedAmount),
+        date_local: resolvedDate,
+      });
+      setAmount("");
+      setSubmitStatus("Tercatat.");
+      await Promise.all([refreshTransactions(), refreshSummary()]);
+      if (amountInputRef.current) {
+        amountInputRef.current.focus();
+        amountInputRef.current.select();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteTransaction = async (tx: Transaction) => {
@@ -117,6 +167,11 @@ export default function Home() {
     }
   };
 
+  const showSoftWarn =
+    summary.recommended_spend_today > 0 &&
+    summary.today_out >= summary.recommended_spend_today * 0.8 &&
+    !summary.overspent_today;
+
   return (
     <main>
       <h1>PNEUMA</h1>
@@ -130,13 +185,21 @@ export default function Home() {
           <div className="hero-card">
             <div className="hero-label">Rekomendasi Belanja Hari Ini</div>
             <div className="hero-value">
-              {formatRupiah(summary.recommended_spend_today)}
+              {isLoadingSummary ? (
+                <span className="skeleton-line" />
+              ) : (
+                formatRupiah(summary.recommended_spend_today)
+              )}
             </div>
           </div>
           <div className="hero-card">
             <div className="hero-label">Sisa Hari Ini</div>
             <div className="hero-value">
-              {formatRupiah(summary.today_remaining_clamped)}
+              {isLoadingSummary ? (
+                <span className="skeleton-line" />
+              ) : (
+                formatRupiah(summary.today_remaining_clamped)
+              )}
             </div>
           </div>
           {summary.overspent_today && (
@@ -146,6 +209,18 @@ export default function Home() {
             </div>
           )}
         </div>
+        {summary.overspent_today && (
+          <div className="soft-warn">
+            Hari ini melewati rekomendasi. Tidak apa-apa—yang penting tercatat.
+            Besok kita atur lagi.
+          </div>
+        )}
+        {showSoftWarn && (
+          <div className="soft-warn">
+            Mendekati batas hari ini. Kalau masih perlu belanja, tetap catat ya
+            — biar kamu tetap sadar ritmenya.
+          </div>
+        )}
       </section>
 
       <section className="quick-entry">
@@ -173,13 +248,27 @@ export default function Home() {
             onChange={(event) => setAmount(event.target.value)}
             placeholder="0"
             inputMode="numeric"
+            ref={amountInputRef}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                handleSubmit();
+              }
+            }}
           />
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!Number.isFinite(Number(amount)) || Number(amount) <= 0}
+            disabled={
+              isSubmitting ||
+              !Number.isFinite(Number(amount)) ||
+              Number(amount) <= 0
+            }
           >
-            {activeKind === "OUT" ? "Catat Pengeluaran" : "Catat Pemasukan"}
+            {isSubmitting
+              ? "Menyimpan..."
+              : activeKind === "OUT"
+                ? "Catat Pengeluaran"
+                : "Catat Pemasukan"}
           </button>
         </div>
         <details className="inline-details">
@@ -194,7 +283,7 @@ export default function Home() {
             />
           </div>
         </details>
-        {submitStatus && <div className="metric-desc">{submitStatus}</div>}
+        {submitStatus && <span className="pill pill-muted">{submitStatus}</span>}
       </section>
 
       <section>
@@ -204,11 +293,23 @@ export default function Home() {
             Lihat semua riwayat →
           </Link>
         </div>
-        {deleteMessage && <div className="metric-desc">{deleteMessage}</div>}
+        {deleteMessage && <span className="pill pill-muted">{deleteMessage}</span>}
         {deleteError && <div className="metric-error">{deleteError}</div>}
         <div className="tx-list">
-          {transactions.length === 0 && (
-            <div className="tx-empty">Belum ada transaksi hari ini.</div>
+          {isLoadingTransactions && transactions.length === 0 && (
+            <div className="skeleton">
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+            </div>
+          )}
+          {!isLoadingTransactions && transactions.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-title">Belum ada transaksi hari ini.</div>
+              <div className="empty-desc">
+                Catat pengeluaran pertama kamu biar batas hari ini lebih terasa.
+              </div>
+            </div>
           )}
           {transactions.map((tx) => (
             <div className="tx-row" key={tx.id}>

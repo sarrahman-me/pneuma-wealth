@@ -30,13 +30,21 @@ export default function FixedCostsPage() {
   const [paidDate, setPaidDate] = useState('')
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [busyId, setBusyId] = useState<number | null>(null)
 
   const todayString = useMemo(() => formatLocalDate(new Date()), [])
   const currentPeriod = useMemo(() => formatPeriodYm(todayString), [todayString])
 
   const refresh = async () => {
-    const data = await invoke<FixedCost[]>('list_fixed_costs')
-    setItems(data)
+    setIsLoading(true)
+    try {
+      const data = await invoke<FixedCost[]>('list_fixed_costs')
+      setItems(data)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -56,16 +64,22 @@ export default function FixedCostsPage() {
       return
     }
 
-    await invoke('add_fixed_cost', {
-      name: name.trim(),
-      amount: Math.trunc(parsedAmount),
-    })
-    setName('')
-    setAmount('')
-    refresh()
+    setIsSubmitting(true)
+    try {
+      await invoke('add_fixed_cost', {
+        name: name.trim(),
+        amount: Math.trunc(parsedAmount),
+      })
+      setName('')
+      setAmount('')
+      refresh()
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleTogglePaid = async (item: FixedCost) => {
+    setBusyId(item.id)
     if (item.paid_date_local) {
       await invoke('mark_fixed_cost_unpaid', {
         fixed_cost_id: item.id,
@@ -78,11 +92,14 @@ export default function FixedCostsPage() {
       })
     }
     refresh()
+    setBusyId(null)
   }
 
   const handleDelete = async (item: FixedCost) => {
+    setBusyId(item.id)
     await invoke('delete_fixed_cost', { fixed_cost_id: item.id })
     refresh()
+    setBusyId(null)
   }
 
   const filteredItems = items.filter((item) => {
@@ -101,6 +118,16 @@ export default function FixedCostsPage() {
     0
   )
   const totalUnpaid = totalPeriod - totalPaid
+
+  const emptyCopy = () => {
+    if (filter === 'paid') {
+      return 'Belum ada biaya tetap yang lunas di periode ini.'
+    }
+    if (filter === 'unpaid') {
+      return 'Semua biaya tetap sudah lunas untuk periode ini.'
+    }
+    return 'Belum ada biaya tetap. Tambahkan listrik, wifi, sewa — biar pengeluaran bulanan kebaca.'
+  }
 
   return (
     <main>
@@ -141,7 +168,9 @@ export default function FixedCostsPage() {
             </div>
           </div>
           <div className="row" style={{ marginTop: 16 }}>
-            <button onClick={handleAdd}>Tambah</button>
+            <button onClick={handleAdd} disabled={isSubmitting}>
+              {isSubmitting ? 'Menyimpan...' : 'Tambah'}
+            </button>
           </div>
           {error && <div className="alert-error">{error}</div>}
         </div>
@@ -191,8 +220,20 @@ export default function FixedCostsPage() {
         </div>
 
         <div className="fixed-list">
-          {filteredItems.length === 0 && (
-            <div className="tx-empty">Belum ada biaya tetap.</div>
+          {isLoading && filteredItems.length === 0 && (
+            <div className="skeleton">
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+            </div>
+          )}
+          {!isLoading && filteredItems.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-title">{emptyCopy()}</div>
+              <div className="empty-desc">
+                Kamu bisa menambahkan biaya tetap di atas untuk periode ini.
+              </div>
+            </div>
           )}
           {filteredItems.map((item) => (
             <div className="fixed-row" key={item.id}>
@@ -218,11 +259,20 @@ export default function FixedCostsPage() {
                   className="secondary"
                   type="button"
                   onClick={() => handleTogglePaid(item)}
+                  disabled={busyId === item.id}
                 >
-                  {item.paid_date_local ? 'Batalkan Lunas' : 'Tandai Lunas'}
+                  {busyId === item.id
+                    ? 'Memproses...'
+                    : item.paid_date_local
+                      ? 'Batalkan Lunas'
+                      : 'Tandai Lunas'}
                 </button>
-                <button type="button" onClick={() => handleDelete(item)}>
-                  Hapus
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item)}
+                  disabled={busyId === item.id}
+                >
+                  {busyId === item.id ? 'Menghapus...' : 'Hapus'}
                 </button>
               </div>
             </div>
