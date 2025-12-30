@@ -52,6 +52,16 @@ struct ConfigPayload {
 }
 
 #[derive(Serialize)]
+struct CoachMode {
+    coach_mode: String,
+}
+
+#[derive(Deserialize)]
+struct CoachModePayload {
+    mode: String,
+}
+
+#[derive(Serialize)]
 pub(crate) struct PoolsSummary {
     total_in: i64,
     total_out: i64,
@@ -209,6 +219,30 @@ fn fetch_config(conn: &Connection) -> Result<Config, String> {
         },
     )
     .map_err(|err| err.to_string())
+}
+
+fn fetch_coach_mode(conn: &Connection) -> Result<CoachMode, String> {
+    let mode: Option<String> = conn
+        .query_row("SELECT coach_mode FROM config WHERE id = 1", [], |row| {
+            row.get(0)
+        })
+        .optional()
+        .map_err(|err| err.to_string())?;
+    Ok(CoachMode {
+        coach_mode: mode.unwrap_or_else(|| "calm".to_string()),
+    })
+}
+
+fn save_coach_mode(conn: &Connection, mode: &str) -> Result<CoachMode, String> {
+    if mode != "calm" && mode != "watchful" {
+        return Err("mode must be 'calm' or 'watchful'".to_string());
+    }
+    conn.execute(
+        "UPDATE config SET coach_mode = ?1, updated_ts_utc = ?2 WHERE id = 1",
+        params![mode, Utc::now().timestamp_millis()],
+    )
+    .map_err(|err| err.to_string())?;
+    fetch_coach_mode(conn)
 }
 
 fn fetch_fixed_cost_amount(conn: &Connection, fixed_cost_id: i64) -> Result<i64, String> {
@@ -509,6 +543,18 @@ fn get_config(app: AppHandle) -> Result<Config, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
+fn get_coach_mode(app: AppHandle) -> Result<CoachMode, String> {
+    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    fetch_coach_mode(&conn)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_coach_mode(app: AppHandle, payload: CoachModePayload) -> Result<CoachMode, String> {
+    let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
+    save_coach_mode(&conn, payload.mode.trim())
+}
+
+#[tauri::command(rename_all = "snake_case")]
 fn update_config(app: AppHandle, payload: ConfigPayload) -> Result<Config, String> {
     if payload.min_floor < 0 || payload.max_ceil < 0 {
         return Err("min_floor and max_ceil must be >= 0".to_string());
@@ -771,6 +817,8 @@ pub fn run() {
             list_transactions_between,
             delete_transaction,
             get_config,
+            get_coach_mode,
+            set_coach_mode,
             update_config,
             list_fixed_costs,
             add_fixed_cost,

@@ -10,6 +10,10 @@ type Config = {
   resilience_days: number
 }
 
+type CoachMode = {
+  coach_mode: 'calm' | 'watchful'
+}
+
 const DEFAULT_CONFIG: Config = {
   min_floor: 0,
   max_ceil: 100000,
@@ -18,14 +22,20 @@ const DEFAULT_CONFIG: Config = {
 
 export default function RulesPage() {
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
+  const [coachMode, setCoachMode] = useState<CoachMode['coach_mode']>('calm')
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+  const [modeStatus, setModeStatus] = useState('')
 
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const data = await invoke<Config>('get_config')
+        const [data, modeData] = await Promise.all([
+          invoke<Config>('get_config'),
+          invoke<CoachMode>('get_coach_mode'),
+        ])
         setConfig(data)
+        setCoachMode(modeData.coach_mode)
       } catch (err) {
         setError(String(err))
       }
@@ -59,6 +69,18 @@ export default function RulesPage() {
       const data = await invoke<Config>('update_config', { payload: config })
       setConfig(data)
       setStatus('Tersimpan')
+    } catch (err) {
+      setError(String(err))
+    }
+  }
+
+  const handleModeChange = async (mode: CoachMode['coach_mode']) => {
+    setError('')
+    setModeStatus('')
+    try {
+      const data = await invoke<CoachMode>('set_coach_mode', { payload: { mode } })
+      setCoachMode(data.coach_mode)
+      setModeStatus('Tersimpan')
     } catch (err) {
       setError(String(err))
     }
@@ -149,6 +171,32 @@ export default function RulesPage() {
             {formatRupiah(config.max_ceil)}.
           </div>
           {error && <div className="alert-error">{error}</div>}
+        </div>
+      </section>
+
+      <section className="rules-editor">
+        <div className="metric-card">
+          <div className="metric-title">Mode Pendamping</div>
+          <div className="helper-text" style={{ marginBottom: 10 }}>
+            Tenang fokus konsistensi; Waspada fokus kontrol saat kondisi rawan.
+          </div>
+          <div className="segmented">
+            <button
+              type="button"
+              className={coachMode === 'calm' ? 'active' : ''}
+              onClick={() => handleModeChange('calm')}
+            >
+              Tenang
+            </button>
+            <button
+              type="button"
+              className={coachMode === 'watchful' ? 'active' : ''}
+              onClick={() => handleModeChange('watchful')}
+            >
+              Waspada
+            </button>
+          </div>
+          {modeStatus && <span className="pill pill-muted">{modeStatus}</span>}
         </div>
       </section>
     </main>

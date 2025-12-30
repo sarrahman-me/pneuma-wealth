@@ -6,7 +6,10 @@ export type CoachingInsight = {
   status_title: string;
   bullets: string[];
   next_step: string;
-  tone: "calm" | "warn" | "praise" | "neutral" | string;
+  tone: "calm" | "alert" | string;
+  coach_mode: "calm" | "watchful" | string;
+  continuity_line?: string | null;
+  memory_reflection?: string | null;
   debug_meta?: {
     rule_id: string;
     key_numbers: number[];
@@ -26,7 +29,13 @@ export default function CoachingInsightCard({
 
   return (
     <div className={`insight-card insight-${insight.tone}`}>
+      {insight.continuity_line && (
+        <div className="insight-continuity">{insight.continuity_line}</div>
+      )}
       <div className="insight-title">{insight.status_title}</div>
+      {!compact && insight.memory_reflection && (
+        <div className="insight-memory">{insight.memory_reflection}</div>
+      )}
       {bulletItems.length > 0 && (
         <ul className="insight-bullets">
           {bulletItems.map((item, index) => (

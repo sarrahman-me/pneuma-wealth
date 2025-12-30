@@ -58,11 +58,13 @@ pub fn init_db(app: &AppHandle) -> AnyResult<()> {
     )?;
 
     ensure_config_row(&conn)?;
+    ensure_config_columns(&conn)?;
     ensure_transactions_columns(&conn)?;
     ensure_fixed_cost_columns(&conn)?;
     ensure_fixed_cost_payments_columns(&conn)?;
     ensure_fixed_cost_payments_nullable(&conn)?;
     ensure_fixed_cost_payments_index(&conn)?;
+    ensure_coaching_memory_table(&conn)?;
     migrate_legacy_fixed_cost_payments(&conn)?;
     Ok(())
 }
@@ -71,11 +73,25 @@ fn ensure_config_row(conn: &Connection) -> AnyResult<()> {
     let existing: i64 = conn.query_row("SELECT COUNT(*) FROM config", [], |row| row.get(0))?;
     if existing == 0 {
         let now = chrono::Utc::now().timestamp_millis();
-        if table_has_column(conn, "config", "burn_pool_ratio")? {
+        if table_has_column(conn, "config", "burn_pool_ratio")?
+            && table_has_column(conn, "config", "coach_mode")?
+        {
+            conn.execute(
+                "INSERT INTO config (id, min_floor, max_ceil, resilience_days, burn_pool_ratio, coach_mode, created_ts_utc, updated_ts_utc)
+                 VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+                params![0_i64, 100_000_i64, 30_i64, 50_i64, "calm", now],
+            )?;
+        } else if table_has_column(conn, "config", "burn_pool_ratio")? {
             conn.execute(
                 "INSERT INTO config (id, min_floor, max_ceil, resilience_days, burn_pool_ratio, created_ts_utc, updated_ts_utc)
                  VALUES (1, ?1, ?2, ?3, ?4, ?5, ?5)",
                 params![0_i64, 100_000_i64, 30_i64, 50_i64, now],
+            )?;
+        } else if table_has_column(conn, "config", "coach_mode")? {
+            conn.execute(
+                "INSERT INTO config (id, min_floor, max_ceil, resilience_days, coach_mode, created_ts_utc, updated_ts_utc)
+                 VALUES (1, ?1, ?2, ?3, ?4, ?5, ?5)",
+                params![0_i64, 100_000_i64, 30_i64, "calm", now],
             )?;
         } else {
             conn.execute(
@@ -85,6 +101,20 @@ fn ensure_config_row(conn: &Connection) -> AnyResult<()> {
             )?;
         }
     }
+    Ok(())
+}
+
+fn ensure_config_columns(conn: &Connection) -> AnyResult<()> {
+    if !table_has_column(conn, "config", "coach_mode")? {
+        conn.execute(
+            "ALTER TABLE config ADD COLUMN coach_mode TEXT NOT NULL DEFAULT 'calm'",
+            [],
+        )?;
+    }
+    conn.execute(
+        "UPDATE config SET coach_mode = 'calm' WHERE coach_mode IS NULL OR coach_mode = ''",
+        [],
+    )?;
     Ok(())
 }
 
@@ -104,6 +134,25 @@ fn ensure_transactions_columns(conn: &Connection) -> AnyResult<()> {
     conn.execute(
         "UPDATE transactions SET source = 'manual' WHERE source IS NULL OR source = ''",
         [],
+    )?;
+    Ok(())
+}
+
+fn ensure_coaching_memory_table(conn: &Connection) -> AnyResult<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS coaching_memory (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ts_utc INTEGER NOT NULL,
+          date_local TEXT NOT NULL,
+          mode TEXT NOT NULL,
+          headline TEXT NOT NULL,
+          tags TEXT NOT NULL,
+          context_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_coaching_memory_date
+          ON coaching_memory(date_local);
+        CREATE INDEX IF NOT EXISTS idx_coaching_memory_ts
+          ON coaching_memory(ts_utc);",
     )?;
     Ok(())
 }

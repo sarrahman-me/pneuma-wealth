@@ -1,6 +1,7 @@
-use chrono::{Duration, Local, NaiveDate};
-use rusqlite::{params, Connection};
+use chrono::{DateTime, Duration, Local, NaiveDate, Timelike};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
+use serde_json::json;
 
 use crate::{compute_pools_summary, PoolsSummary};
 
@@ -16,7 +17,22 @@ pub struct CoachingInsight {
     pub bullets: Vec<String>,
     pub next_step: String,
     pub tone: String,
+    pub coach_mode: String,
+    pub continuity_line: Option<String>,
+    pub memory_reflection: Option<String>,
     pub debug_meta: Option<InsightDebugMeta>,
+}
+
+struct TimeContext {
+    now_local: DateTime<Local>,
+    time_bucket: String,
+    is_new_day_first_open: bool,
+}
+
+struct CoachingMemoryEntry {
+    date_local: String,
+    mode: String,
+    headline: String,
 }
 
 struct InsightInputs {
@@ -34,8 +50,8 @@ fn rupiah(value: i64) -> String {
     format!("Rp{}", value)
 }
 
-fn today_local_string() -> String {
-    Local::now().format("%Y-%m-%d").to_string()
+fn today_local_string(now_local: DateTime<Local>) -> String {
+    now_local.format("%Y-%m-%d").to_string()
 }
 
 fn period_ym_from_date(date_local: &str) -> String {
@@ -54,15 +70,137 @@ fn date_range_last_7_days(today_local: &str) -> Result<(String, String), String>
     ))
 }
 
-pub fn compute_coaching_insight(conn: &Connection) -> Result<CoachingInsight, String> {
-    let today_local = today_local_string();
-    compute_coaching_insight_for_date(conn, &today_local)
+fn fetch_coach_mode(conn: &Connection) -> Result<String, String> {
+    let mode: Option<String> = conn
+        .query_row("SELECT coach_mode FROM config WHERE id = 1", [], |row| {
+            row.get(0)
+        })
+        .optional()
+        .map_err(|err| err.to_string())?;
+    Ok(mode.unwrap_or_else(|| "calm".to_string()))
 }
 
-fn compute_coaching_insight_for_date(
+fn build_time_context(
+    now_local: DateTime<Local>,
+    tx_count_today: i64,
+    has_memory_today: bool,
+) -> TimeContext {
+    let hour = now_local.hour();
+    let time_bucket = if (5..10).contains(&hour) {
+        "morning"
+    } else if (10..15).contains(&hour) {
+        "midday"
+    } else if (15..18).contains(&hour) {
+        "afternoon"
+    } else if (18..22).contains(&hour) {
+        "evening"
+    } else {
+        "night"
+    }
+    .to_string();
+
+    TimeContext {
+        now_local,
+        time_bucket,
+        is_new_day_first_open: !has_memory_today && tx_count_today == 0,
+    }
+}
+
+fn fetch_last_memory(conn: &Connection) -> Result<Option<CoachingMemoryEntry>, String> {
+    conn.query_row(
+        "SELECT date_local, mode, headline
+         FROM coaching_memory
+         ORDER BY ts_utc DESC
+         LIMIT 1",
+        [],
+        |row| {
+            Ok(CoachingMemoryEntry {
+                date_local: row.get(0)?,
+                mode: row.get(1)?,
+                headline: row.get(2)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(|err| err.to_string())
+}
+
+fn fetch_memory_for_date(
     conn: &Connection,
+    date_local: &str,
+) -> Result<Option<CoachingMemoryEntry>, String> {
+    conn.query_row(
+        "SELECT date_local, mode, headline
+         FROM coaching_memory
+         WHERE date_local = ?1
+         ORDER BY ts_utc DESC
+         LIMIT 1",
+        [date_local],
+        |row| {
+            Ok(CoachingMemoryEntry {
+                date_local: row.get(0)?,
+                mode: row.get(1)?,
+                headline: row.get(2)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(|err| err.to_string())
+}
+
+fn build_continuity_line(
+    time_context: &TimeContext,
+    last_memory: Option<&CoachingMemoryEntry>,
+    tone: &str,
+) -> Option<String> {
+    if let Some(memory) = last_memory {
+        let today_local = today_local_string(time_context.now_local);
+        if memory.date_local != today_local {
+            if memory.mode == "alert" && tone == "calm" {
+                return Some(
+                    "Kemarin sempat ketat, hari ini kita mulai lagi pelan-pelan.".to_string(),
+                );
+            }
+            if memory.mode == "calm" && tone == "alert" {
+                return Some(
+                    "Hari ini lebih ketat dari kemarin. Kita jaga pelan-pelan.".to_string(),
+                );
+            }
+        }
+    }
+
+    if time_context.is_new_day_first_open {
+        let line = match time_context.time_bucket.as_str() {
+            "morning" => "Pagi ini kita mulai pelan-pelan.",
+            "night" => "Hari ini hampir selesai, besok kita mulai lagi.",
+            _ => "Hari ini kita mulai pelan-pelan.",
+        };
+        return Some(line.to_string());
+    }
+
+    None
+}
+
+fn build_memory_reflection(
+    last_memory: Option<&CoachingMemoryEntry>,
     today_local: &str,
+) -> Option<String> {
+    let memory = last_memory?;
+    if memory.date_local == today_local {
+        return None;
+    }
+    Some(format!("Catatan terakhir: {}.", memory.headline))
+}
+
+pub fn compute_coaching_insight(conn: &Connection) -> Result<CoachingInsight, String> {
+    compute_coaching_insight_with_time(conn, Local::now())
+}
+
+fn compute_coaching_insight_with_time(
+    conn: &Connection,
+    now_local: DateTime<Local>,
 ) -> Result<CoachingInsight, String> {
+    let today_local = today_local_string(now_local);
     let summary = compute_pools_summary(conn)?;
     let tx_count_total: i64 = conn
         .query_row("SELECT COUNT(*) FROM transactions", [], |row| row.get(0))
@@ -70,12 +208,12 @@ fn compute_coaching_insight_for_date(
     let tx_count_today: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM transactions WHERE date_local = ?1",
-            [today_local],
+            [today_local.as_str()],
             |row| row.get(0),
         )
         .map_err(|err| err.to_string())?;
 
-    let (start_7d, end_7d) = date_range_last_7_days(today_local)?;
+    let (start_7d, end_7d) = date_range_last_7_days(&today_local)?;
     let total_out_7d: i64 = conn
         .query_row(
             "SELECT COALESCE(SUM(amount), 0) FROM transactions
@@ -94,7 +232,7 @@ fn compute_coaching_insight_for_date(
         )
         .map_err(|err| err.to_string())?;
 
-    let period_ym = period_ym_from_date(today_local);
+    let period_ym = period_ym_from_date(&today_local);
     let fixed_cost_unpaid_count_month: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM fixed_costs fc
@@ -116,6 +254,11 @@ fn compute_coaching_insight_for_date(
         )
         .map_err(|err| err.to_string())?;
 
+    let coach_mode = fetch_coach_mode(conn)?;
+    let last_memory = fetch_last_memory(conn)?;
+    let has_memory_today = fetch_memory_for_date(conn, &today_local)?.is_some();
+    let time_context = build_time_context(now_local, tx_count_today, has_memory_today);
+
     let inputs = InsightInputs {
         summary,
         tx_count_total,
@@ -126,12 +269,31 @@ fn compute_coaching_insight_for_date(
         fixed_cost_unpaid_count_month,
         fixed_cost_unpaid_amount_month,
     };
+    let mut insight = select_insight_rule(&inputs, &coach_mode, &time_context);
+    insight.continuity_line =
+        build_continuity_line(&time_context, last_memory.as_ref(), &insight.tone);
+    insight.memory_reflection = build_memory_reflection(last_memory.as_ref(), &today_local);
+    insight.coach_mode = coach_mode.clone();
 
-    Ok(select_insight_rule(&inputs))
+    maybe_record_memory(
+        conn,
+        &inputs,
+        &insight,
+        &coach_mode,
+        last_memory.as_ref(),
+        &today_local,
+    )?;
+
+    Ok(insight)
 }
 
-fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
+fn select_insight_rule(
+    inputs: &InsightInputs,
+    coach_mode: &str,
+    time_context: &TimeContext,
+) -> CoachingInsight {
     let summary = &inputs.summary;
+    let watchful = coach_mode == "watchful";
 
     if inputs.tx_count_total < 5 {
         return CoachingInsight {
@@ -150,7 +312,10 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                 ),
             ],
             next_step: "Langkah kecil: catat 1 transaksi hari ini agar ritme terasa.".to_string(),
-            tone: "neutral".to_string(),
+            tone: "calm".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "onboarding".to_string(),
                 key_numbers: vec![inputs.tx_count_total, summary.recommended_spend_today],
@@ -159,6 +324,14 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
     }
 
     if summary.recommended_spend_today > 0 && summary.today_out > summary.recommended_spend_today {
+        let next_step = if watchful {
+            "Jika bisa, hentikan pengeluaran tambahan sampai besok.".to_string()
+        } else {
+            format!(
+                "Hari ini aman kalau tahan belanja tambahan; besok reset dengan target {}.",
+                rupiah(summary.recommended_spend_today)
+            )
+        };
         return CoachingInsight {
             status_title: format!(
                 "Hari ini melewati batas {}.",
@@ -168,11 +341,11 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                 format!("Pengeluaran hari ini {}.", rupiah(summary.today_out)),
                 format!("Sisa hari ini {}.", rupiah(summary.today_remaining)),
             ],
-            next_step: format!(
-                "Hari ini aman kalau tahan belanja tambahan; besok reset dengan target {}.",
-                rupiah(summary.recommended_spend_today)
-            ),
-            tone: "warn".to_string(),
+            next_step,
+            tone: "alert".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "overspent_today".to_string(),
                 key_numbers: vec![
@@ -194,8 +367,11 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                 ),
                 format!("Pengeluaran hari ini {}.", rupiah(summary.today_out)),
             ],
-            next_step: "Langkah kecil: catat 1 transaksi pertama hari ini.".to_string(),
-            tone: "neutral".to_string(),
+            next_step: time_bucket_no_tx_next_step(time_context),
+            tone: "calm".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "no_tx_today".to_string(),
                 key_numbers: vec![
@@ -223,6 +399,9 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
             next_step: "Langkah kecil: pilih 1 biaya tetap yang paling dekat jatuh tempo."
                 .to_string(),
             tone: "calm".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "fixed_cost_unpaid".to_string(),
                 key_numbers: vec![
@@ -238,6 +417,17 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
         && summary.net_balance < summary.target_penyangga
         && summary.hari_ketahanan_stop_pemasukan <= 7
     {
+        let next_step = if watchful {
+            format!(
+                "Prioritaskan kebutuhan inti; jaga pengeluaran di bawah {}.",
+                rupiah(summary.recommended_spend_today)
+            )
+        } else {
+            format!(
+                "Hari ini aman kalau jaga pengeluaran di bawah {}.",
+                rupiah(summary.recommended_spend_today)
+            )
+        };
         return CoachingInsight {
             status_title: format!(
                 "Penyangga belum aman, ketahanan {} hari.",
@@ -254,11 +444,11 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                     rupiah(summary.recommended_spend_today)
                 ),
             ],
-            next_step: format!(
-                "Hari ini aman kalau jaga pengeluaran di bawah {}.",
-                rupiah(summary.recommended_spend_today)
-            ),
-            tone: "warn".to_string(),
+            next_step,
+            tone: "alert".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "low_buffer".to_string(),
                 key_numbers: vec![
@@ -273,6 +463,17 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
     if summary.recommended_spend_today > 0
         && summary.today_out >= (summary.recommended_spend_today * 8) / 10
     {
+        let next_step = if watchful {
+            format!(
+                "Tekan belanja tambahan; sisa aman {} untuk hari ini.",
+                rupiah(summary.today_remaining_clamped)
+            )
+        } else {
+            format!(
+                "Langkah kecil: kalau perlu belanja lagi, pilih yang paling penting di bawah {}.",
+                rupiah(summary.today_remaining_clamped)
+            )
+        };
         return CoachingInsight {
             status_title: format!(
                 "Hampir menyentuh batas {}.",
@@ -285,11 +486,11 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                     rupiah(summary.today_remaining_clamped)
                 ),
             ],
-            next_step: format!(
-                "Langkah kecil: kalau perlu belanja lagi, pilih yang paling penting di bawah {}.",
-                rupiah(summary.today_remaining_clamped)
-            ),
+            next_step,
             tone: "calm".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "near_limit".to_string(),
                 key_numbers: vec![
@@ -313,7 +514,10 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
                 format!("Total transaksi tercatat {}.", inputs.tx_count_total),
             ],
             next_step: "Pertahankan: cukup 1 catatan per hari selama 2 hari lagi.".to_string(),
-            tone: "praise".to_string(),
+            tone: "calm".to_string(),
+            coach_mode: coach_mode.to_string(),
+            continuity_line: None,
+            memory_reflection: None,
             debug_meta: Some(InsightDebugMeta {
                 rule_id: "consistency_praise".to_string(),
                 key_numbers: vec![inputs.days_with_tx_7d, inputs.avg_out_7d],
@@ -340,7 +544,10 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
             "Langkah kecil: belanja aman jika tetap di bawah {}.",
             rupiah(summary.recommended_spend_today)
         ),
-        tone: "neutral".to_string(),
+        tone: "calm".to_string(),
+        coach_mode: coach_mode.to_string(),
+        continuity_line: None,
+        memory_reflection: None,
         debug_meta: Some(InsightDebugMeta {
             rule_id: "normal".to_string(),
             key_numbers: vec![summary.net_balance, summary.recommended_spend_today],
@@ -348,9 +555,107 @@ fn select_insight_rule(inputs: &InsightInputs) -> CoachingInsight {
     }
 }
 
+fn time_bucket_no_tx_next_step(time_context: &TimeContext) -> String {
+    match time_context.time_bucket.as_str() {
+        "morning" => "Kalau ada satu catatan kecil pagi ini, ritmenya lebih terasa.".to_string(),
+        "night" => "Hari ini sudah hampir selesai; besok kita mulai lagi.".to_string(),
+        _ => "Langkah kecil: catat 1 transaksi pertama hari ini.".to_string(),
+    }
+}
+
+fn maybe_record_memory(
+    conn: &Connection,
+    inputs: &InsightInputs,
+    insight: &CoachingInsight,
+    coach_mode: &str,
+    last_memory: Option<&CoachingMemoryEntry>,
+    today_local: &str,
+) -> Result<(), String> {
+    let existing_today = fetch_memory_for_date(conn, today_local)?;
+    let tone_changed = last_memory
+        .map(|entry| entry.mode != insight.tone)
+        .unwrap_or(false);
+    let overspent = insight
+        .debug_meta
+        .as_ref()
+        .map(|meta| meta.rule_id == "overspent_today")
+        .unwrap_or(false);
+    let streak_milestone = inputs.days_with_tx_7d == 3 || inputs.days_with_tx_7d == 7;
+    let first_tx_today = inputs.tx_count_today == 1;
+    let event_significant = overspent || streak_milestone || first_tx_today || tone_changed;
+
+    if existing_today.is_some() && !event_significant {
+        return Ok(());
+    }
+
+    let tags = build_memory_tags(insight, streak_milestone, first_tx_today);
+    let context_json = json!({
+        "recommended_spend_today": inputs.summary.recommended_spend_today,
+        "today_out": inputs.summary.today_out,
+        "net_balance": inputs.summary.net_balance,
+        "hari_ketahanan": inputs.summary.hari_ketahanan_stop_pemasukan,
+        "unpaid_count": inputs.fixed_cost_unpaid_count_month,
+        "mode": coach_mode,
+    })
+    .to_string();
+
+    conn.execute(
+        "INSERT INTO coaching_memory (ts_utc, date_local, mode, headline, tags, context_json)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            chrono::Utc::now().timestamp_millis(),
+            today_local,
+            insight.tone,
+            insight.status_title,
+            tags,
+            context_json
+        ],
+    )
+    .map_err(|err| err.to_string())?;
+
+    trim_memory(conn, 200)?;
+    Ok(())
+}
+
+fn build_memory_tags(
+    insight: &CoachingInsight,
+    streak_milestone: bool,
+    first_tx_today: bool,
+) -> String {
+    let mut tags = Vec::new();
+    if let Some(meta) = insight.debug_meta.as_ref() {
+        tags.push(meta.rule_id.as_str());
+    }
+    if streak_milestone {
+        tags.push("streak");
+    }
+    if first_tx_today {
+        tags.push("first_tx");
+    }
+    if insight.tone == "alert" {
+        tags.push("alert");
+    }
+    tags.join(",")
+}
+
+fn trim_memory(conn: &Connection, limit: i64) -> Result<(), String> {
+    conn.execute(
+        "DELETE FROM coaching_memory
+         WHERE id NOT IN (
+            SELECT id FROM coaching_memory
+            ORDER BY ts_utc DESC
+            LIMIT ?1
+         )",
+        [limit],
+    )
+    .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{Datelike, TimeZone};
     use rusqlite::Connection;
 
     fn setup_conn(min_floor: i64, max_ceil: i64, resilience_days: i64) -> Connection {
@@ -362,6 +667,7 @@ mod tests {
                 min_floor INTEGER NOT NULL,
                 max_ceil INTEGER NOT NULL,
                 resilience_days INTEGER NOT NULL,
+                coach_mode TEXT NOT NULL,
                 created_ts_utc INTEGER NOT NULL,
                 updated_ts_utc INTEGER NOT NULL
             );
@@ -391,13 +697,22 @@ mod tests {
                 paid_ts_utc INTEGER,
                 tx_id INTEGER,
                 FOREIGN KEY(fixed_cost_id) REFERENCES fixed_costs(id)
+            );
+            CREATE TABLE coaching_memory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts_utc INTEGER NOT NULL,
+                date_local TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                headline TEXT NOT NULL,
+                tags TEXT NOT NULL,
+                context_json TEXT
             );",
         )
         .expect("create schema");
         let now = chrono::Utc::now().timestamp_millis();
         conn.execute(
-            "INSERT INTO config (id, min_floor, max_ceil, resilience_days, created_ts_utc, updated_ts_utc)
-             VALUES (1, ?1, ?2, ?3, ?4, ?4)",
+            "INSERT INTO config (id, min_floor, max_ceil, resilience_days, coach_mode, created_ts_utc, updated_ts_utc)
+             VALUES (1, ?1, ?2, ?3, 'calm', ?4, ?4)",
             params![min_floor, max_ceil, resilience_days, now],
         )
         .expect("insert config");
@@ -427,12 +742,21 @@ mod tests {
         conn.last_insert_rowid()
     }
 
+    fn compute_for(conn: &Connection, date_local: &str, hour: u32) -> CoachingInsight {
+        let date = NaiveDate::parse_from_str(date_local, "%Y-%m-%d").expect("date");
+        let dt = Local
+            .with_ymd_and_hms(date.year(), date.month(), date.day(), hour, 0, 0)
+            .single()
+            .expect("dt");
+        compute_coaching_insight_with_time(conn, dt).expect("insight")
+    }
+
     #[test]
     fn rule_onboarding_when_low_tx() {
         let conn = setup_conn(100, 1000, 10);
         insert_tx(&conn, "2025-05-10", "IN", 1000);
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 9);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "onboarding");
     }
 
@@ -446,8 +770,9 @@ mod tests {
         insert_tx(&conn, "2025-05-07", "IN", 200);
         insert_tx(&conn, "2025-05-06", "IN", 200);
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 12);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "overspent_today");
+        assert_eq!(insight.tone, "alert");
     }
 
     #[test]
@@ -457,7 +782,7 @@ mod tests {
             insert_tx(&conn, &format!("2025-05-0{}", day), "IN", 200);
         }
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 8);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "no_tx_today");
     }
 
@@ -470,7 +795,7 @@ mod tests {
         insert_tx(&conn, "2025-05-10", "OUT", 10);
         insert_fixed_cost(&conn, "Sewa", 500);
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 14);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "fixed_cost_unpaid");
     }
 
@@ -485,7 +810,7 @@ mod tests {
         insert_tx(&conn, "2025-05-06", "OUT", 10);
         insert_tx(&conn, "2025-05-05", "OUT", 10);
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 16);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "consistency_praise");
     }
 
@@ -499,7 +824,60 @@ mod tests {
         insert_tx(&conn, "2025-05-07", "OUT", 10);
         insert_tx(&conn, "2025-05-06", "OUT", 10);
 
-        let insight = compute_coaching_insight_for_date(&conn, "2025-05-10").expect("insight");
+        let insight = compute_for(&conn, "2025-05-10", 16);
         assert_eq!(insight.debug_meta.unwrap().rule_id, "normal");
+    }
+
+    #[test]
+    fn watchful_mode_changes_overspent_copy() {
+        let conn = setup_conn(100, 1000, 10);
+        conn.execute("UPDATE config SET coach_mode = 'watchful' WHERE id = 1", [])
+            .expect("set mode");
+        insert_tx(&conn, "2025-05-10", "IN", 2000);
+        insert_tx(&conn, "2025-05-10", "OUT", 200);
+        insert_tx(&conn, "2025-05-09", "IN", 200);
+        insert_tx(&conn, "2025-05-08", "IN", 200);
+        insert_tx(&conn, "2025-05-07", "IN", 200);
+        insert_tx(&conn, "2025-05-06", "IN", 200);
+
+        let insight = compute_for(&conn, "2025-05-10", 19);
+        assert_eq!(insight.debug_meta.unwrap().rule_id, "overspent_today");
+        assert!(insight.next_step.contains("hentikan pengeluaran"));
+        assert_eq!(insight.coach_mode, "watchful");
+    }
+
+    #[test]
+    fn memory_not_added_twice_without_event() {
+        let conn = setup_conn(100, 1000, 10);
+        insert_tx(&conn, "2025-05-10", "IN", 2000);
+        insert_tx(&conn, "2025-05-10", "OUT", 10);
+        insert_tx(&conn, "2025-05-09", "OUT", 10);
+        insert_tx(&conn, "2025-05-08", "OUT", 10);
+        insert_tx(&conn, "2025-05-07", "OUT", 10);
+        insert_tx(&conn, "2025-05-06", "OUT", 10);
+
+        let _ = compute_for(&conn, "2025-05-10", 11);
+        let _ = compute_for(&conn, "2025-05-10", 12);
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM coaching_memory", [], |row| row.get(0))
+            .expect("count");
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn memory_added_on_overspent() {
+        let conn = setup_conn(100, 1000, 10);
+        insert_tx(&conn, "2025-05-10", "IN", 2000);
+        insert_tx(&conn, "2025-05-10", "OUT", 200);
+        insert_tx(&conn, "2025-05-09", "IN", 200);
+        insert_tx(&conn, "2025-05-08", "IN", 200);
+        insert_tx(&conn, "2025-05-07", "IN", 200);
+        insert_tx(&conn, "2025-05-06", "IN", 200);
+
+        let _ = compute_for(&conn, "2025-05-10", 13);
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM coaching_memory", [], |row| row.get(0))
+            .expect("count");
+        assert_eq!(count, 1);
     }
 }
