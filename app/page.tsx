@@ -17,6 +17,7 @@ type Transaction = {
   amount: number;
   source: "manual" | "fixed_cost";
   fixed_cost_id: number | null;
+  description: string | null;
 };
 
 type TodaySummary = {
@@ -43,6 +44,7 @@ const formatLocalTime = (timestamp: number) =>
 export default function Home() {
   const [activeKind, setActiveKind] = useState<"OUT" | "IN">("OUT");
   const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
   const [dateLocal, setDateLocal] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TodaySummary>({
@@ -161,8 +163,10 @@ export default function Home() {
       await invoke(command, {
         amount: Math.trunc(parsedAmount),
         date_local: resolvedDate,
+        description: description || null,
       });
       setAmount("");
+      setDescription("");
       setSubmitStatus("Tercatat.");
       await Promise.all([
         refreshTransactions(),
@@ -314,6 +318,17 @@ export default function Home() {
                 : "Catat Pemasukan"}
           </button>
         </div>
+        <input
+          type="text"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Keterangan (opsional)"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleSubmit();
+            }
+          }}
+        />
         <details className="inline-details">
           <summary>Ubah tanggal</summary>
           <div className="inline-details-body">
@@ -364,6 +379,7 @@ export default function Home() {
                   </span>
                   <span className="tx-amount">{formatRupiah(tx.amount)}</span>
                 </div>
+                {tx.description && <div className="tx-desc">{tx.description}</div>}
                 <div className="tx-meta">
                   <span>{formatLocalTime(tx.ts_utc)}</span>
                   <span className="pill pill-muted">

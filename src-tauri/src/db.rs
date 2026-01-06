@@ -131,6 +131,9 @@ fn ensure_transactions_columns(conn: &Connection) -> AnyResult<()> {
             [],
         )?;
     }
+    if !table_has_column(conn, "transactions", "description")? {
+        conn.execute("ALTER TABLE transactions ADD COLUMN description TEXT", [])?;
+    }
     conn.execute(
         "UPDATE transactions SET source = 'manual' WHERE source IS NULL OR source = ''",
         [],

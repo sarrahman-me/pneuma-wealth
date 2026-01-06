@@ -15,6 +15,7 @@ struct Transaction {
     amount: i64,
     source: String,
     fixed_cost_id: Option<i64>,
+    description: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -346,6 +347,7 @@ fn insert_transaction(
     date_local: Option<String>,
     source: &str,
     fixed_cost_id: Option<i64>,
+    description: Option<String>,
 ) -> Result<Transaction, String> {
     if amount < 0 {
         return Err("amount must be >= 0".to_string());
@@ -355,9 +357,9 @@ fn insert_transaction(
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
 
     conn.execute(
-        "INSERT INTO transactions (ts_utc, date_local, kind, amount, source, fixed_cost_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![ts_utc, date_local, kind, amount, source, fixed_cost_id],
+        "INSERT INTO transactions (ts_utc, date_local, kind, amount, source, fixed_cost_id, description)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![ts_utc, date_local, kind, amount, source, fixed_cost_id, description],
     )
     .map_err(|err| err.to_string())?;
 
@@ -371,6 +373,7 @@ fn insert_transaction(
         amount,
         source: source.to_string(),
         fixed_cost_id,
+        description,
     })
 }
 
@@ -379,8 +382,9 @@ fn add_income(
     app: AppHandle,
     amount: i64,
     date_local: Option<String>,
+    description: Option<String>,
 ) -> Result<Transaction, String> {
-    insert_transaction(app, "IN", amount, date_local, "manual", None)
+    insert_transaction(app, "IN", amount, date_local, "manual", None, description)
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -388,8 +392,9 @@ fn add_expense(
     app: AppHandle,
     amount: i64,
     date_local: Option<String>,
+    description: Option<String>,
 ) -> Result<Transaction, String> {
-    insert_transaction(app, "OUT", amount, date_local, "manual", None)
+    insert_transaction(app, "OUT", amount, date_local, "manual", None, description)
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -397,7 +402,7 @@ fn list_recent_transactions(app: AppHandle, limit: u32) -> Result<Vec<Transactio
     let conn = db::open_connection(&app).map_err(|err| err.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id
+            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id, description
              FROM transactions
              ORDER BY ts_utc DESC
              LIMIT ?1",
@@ -414,6 +419,7 @@ fn list_recent_transactions(app: AppHandle, limit: u32) -> Result<Vec<Transactio
                 amount: row.get(4)?,
                 source: row.get(5)?,
                 fixed_cost_id: row.get(6)?,
+                description: row.get(7)?,
             })
         })
         .map_err(|err| err.to_string())?;
@@ -441,7 +447,7 @@ fn list_transactions_between(
 
     let (sql, params): (&str, Vec<rusqlite::types::Value>) = if let Some(kind) = kind {
         (
-            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id
+            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id, description
              FROM transactions
              WHERE date_local >= ?1 AND date_local <= ?2 AND kind = ?3
              ORDER BY date_local DESC, ts_utc DESC
@@ -456,7 +462,7 @@ fn list_transactions_between(
         )
     } else {
         (
-            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id
+            "SELECT id, ts_utc, date_local, kind, amount, source, fixed_cost_id, description
              FROM transactions
              WHERE date_local >= ?1 AND date_local <= ?2
              ORDER BY date_local DESC, ts_utc DESC
@@ -481,6 +487,7 @@ fn list_transactions_between(
                 amount: row.get(4)?,
                 source: row.get(5)?,
                 fixed_cost_id: row.get(6)?,
+                description: row.get(7)?,
             })
         })
         .map_err(|err| err.to_string())?;
@@ -808,7 +815,8 @@ mod tests {
                 kind TEXT NOT NULL,
                 amount INTEGER NOT NULL,
                 source TEXT NOT NULL DEFAULT 'manual',
-                fixed_cost_id INTEGER
+                fixed_cost_id INTEGER,
+                description TEXT
             );",
         )
         .expect("create tables");
@@ -840,7 +848,8 @@ mod tests {
               kind TEXT NOT NULL,
               amount INTEGER NOT NULL,
               source TEXT NOT NULL DEFAULT 'manual',
-              fixed_cost_id INTEGER
+              fixed_cost_id INTEGER,
+              description TEXT
             );
             CREATE TABLE fixed_cost_payments (
               id INTEGER PRIMARY KEY AUTOINCREMENT,

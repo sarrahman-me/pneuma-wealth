@@ -13,6 +13,7 @@ type Transaction = {
   amount: number;
   source: "manual" | "fixed_cost";
   fixed_cost_id: number | null;
+  description: string | null;
 };
 
 const formatLocalDate = (date: Date) => {
@@ -178,6 +179,7 @@ export default function HistoryPage() {
                   </span>
                   <span className="tx-amount">{formatRupiah(tx.amount)}</span>
                 </div>
+                {tx.description && <div className="tx-desc">{tx.description}</div>}
                 <div className="tx-meta">
                   <span>{tx.date_local}</span>
                   <span>{formatLocalTime(tx.ts_utc)}</span>
