@@ -25,8 +25,16 @@ const parseAmount = (raw: FormDataEntryValue | null): number => {
   return Math.trunc(amount)
 }
 
+/**
+ * Id yang tidak berbentuk UUID membuat Postgres melempar galat mentah berisi
+ * seluruh query — bukan sesuatu yang layak dibaca pengguna. Disaring di sini.
+ */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** Memastikan keinginan benar-benar milik pengguna ini sebelum disentuh. */
 const ownedWish = async (userId: string, id: string) => {
+  if (!UUID_PATTERN.test(id)) throw new Error('Keinginan tidak ditemukan.')
+
   const [wish] = await getDb()
     .select()
     .from(wishItems)

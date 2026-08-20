@@ -86,6 +86,7 @@ function DecidedRow({ wish }: { wish: WishView }) {
       </div>
       <span className="wish-amount">{formatRupiah(wish.amount)}</span>
       <form action={action}>
+        <input type="hidden" name="id" value={wish.id} />
         <button type="submit" className="link-button" disabled={pending}>
           {pending ? '…' : 'Hapus'}
         </button>
