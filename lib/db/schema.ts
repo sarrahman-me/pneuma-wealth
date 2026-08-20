@@ -30,7 +30,7 @@ export const transactionSource = pgEnum('transaction_source', ['manual', 'fixed_
 export const accountKind = pgEnum('account_kind', ['spendable', 'savings'])
 /** Kebutuhan vs keinginan — inilah yang membuat coaching bisa menjelaskan "kenapa boros". */
 export const categoryNature = pgEnum('category_nature', ['essential', 'discretionary'])
-export const recurrence = pgEnum('recurrence', ['weekly', 'monthly', 'yearly'])
+export const recurrence = pgEnum('recurrence', ['daily', 'weekly', 'monthly', 'yearly'])
 export const coachMode = pgEnum('coach_mode', ['calm', 'watchful', 'tight'])
 export const wishStatus = pgEnum('wish_status', ['waiting', 'bought', 'released'])
 
@@ -108,8 +108,13 @@ export const fixedCosts = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     amount: money('amount').notNull(),
-    /** Tanggal jatuh tempo dalam periode (1–31). Dipakai untuk horizon kewajiban. */
+    /**
+     * Dibaca menurut `recurrence`: diabaikan untuk harian, hari dalam pekan
+     * (1–7, 1 = Senin) untuk mingguan, tanggal (1–31) untuk bulanan dan tahunan.
+     */
     dueDay: integer('due_day').notNull().default(1),
+    /** Bulan jatuh tempo (1–12). Hanya bermakna untuk siklus tahunan. */
+    dueMonth: integer('due_month').notNull().default(1),
     recurrence: recurrence('recurrence').notNull().default('monthly'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -155,7 +160,10 @@ export const fixedCostPayments = pgTable(
     fixedCostId: uuid('fixed_cost_id')
       .notNull()
       .references(() => fixedCosts.id, { onDelete: 'cascade' }),
-    /** Periode `YYYY-MM`. */
+    /**
+     * Kunci periode, bentuknya mengikuti siklus biaya tetapnya: `YYYY-MM-DD`
+     * harian, `YYYY-Www` mingguan, `YYYY-MM` bulanan, `YYYY` tahunan.
+     */
     period: text('period').notNull(),
     paidDateLocal: date('paid_date_local'),
     transactionId: uuid('transaction_id').references(() => transactions.id, {

@@ -197,11 +197,19 @@ export default async function GuidePage() {
             <dt>Kalau belanja pakai uang tunai yang sudah lama di dompet?</dt>
             <dd>Tetap catat. Semua uang yang keluar dihitung sama.</dd>
 
-            <dt>Bayar tagihan bulanan, dicatat di mana?</dt>
+            <dt>Bayar tagihan rutin, dicatat di mana?</dt>
             <dd>
               Bukan di Beranda. Buka <Link href="/fixed-costs">Biaya Tetap</Link> lalu
               tekan &ldquo;Tandai lunas&rdquo;. Kalau dicatat sebagai pengeluaran biasa,
               uangnya terhitung dua kali dan jatahmu jadi salah.
+            </dd>
+
+            <dt>Tagihanku ada yang mingguan dan tahunan, bukan bulanan?</dt>
+            <dd>
+              Pilih siklusnya saat menambah di Biaya Tetap: harian, mingguan, bulanan,
+              atau tahunan. Yang disisihkan adalah setiap kali tagihan itu jatuh tempo
+              dalam horizon kewajibanmu — jadi langganan mingguan disisihkan empat kali
+              sebulan, dan tagihan tahunan baru disisihkan saat waktunya sudah dekat.
             </dd>
 
             <dt>Salah catat?</dt>

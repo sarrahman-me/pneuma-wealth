@@ -147,6 +147,7 @@ Environment: `vercel env pull .env.local`.
 
 ## Status
 
-Project pribadi. Siklus biaya tetap yang didukung baru bulanan; enum
-`recurrence` di skema sudah menyiapkan mingguan dan tahunan, tapi UI belum
-menawarkannya.
+Project pribadi. Biaya tetap mendukung siklus harian, mingguan, bulanan, dan
+tahunan; setiap kejadian dalam horizon kewajiban disisihkan sendiri-sendiri,
+jadi langganan mingguan tidak dihitung sekali sebulan dan tagihan tahunan tidak
+dihitung dua belas kali.

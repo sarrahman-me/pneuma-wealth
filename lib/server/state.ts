@@ -26,8 +26,8 @@ import { computeFunds } from '../core/funds'
 import { analyzeIncome, type IncomeCadence } from '../core/cadence'
 import { computePace, type Pace } from '../core/pace'
 import { computeInsight, timeBucketOf } from '../core/insight'
-import { addDays, daysBetween, periodOf } from '../core/money'
-import { nextMonthlyDue } from '../core/due'
+import { addDays, daysBetween } from '../core/money'
+import { occurrencesWithin, periodKeyFor } from '../core/due'
 import { hourIn, todayIn } from '../core/timezone'
 import type { AllowanceAnchor, DailyAllowance, Funds, Settings } from '../core/types'
 import type { CoachingInsight, InsightStats, MemoryEntry } from '../core/insight-types'
@@ -36,7 +36,17 @@ import type { CurrentUser } from './user'
 export type Obligations = {
   /** Total kewajiban yang jatuh tempo dalam horizon — inilah yang dipotong di depan. */
   scheduled: number
+  /**
+   * Berapa *tagihan* yang punya kejadian belum lunas dalam horizon — dihitung
+   * per tagihan, bukan per kejadian. Satu biaya harian akan menghasilkan tiga
+   * puluh kejadian, dan "30 tagihan belum lunas" bukan kalimat yang benar.
+   */
   unpaidCount: number
+  /**
+   * Nilai seluruh kejadian yang belum lunas dalam horizon. Sengaja dibatasi
+   * horizon: dengan siklus harian, "belum lunas selamanya" adalah angka tak
+   * hingga dan tidak berarti apa-apa.
+   */
   unpaidAmount: number
   daysToNextDue: number | null
 }
@@ -139,19 +149,25 @@ const fetchObligations = async (
   let unpaidAmount = 0
   let daysToNextDue: number | null = null
 
+  // Siklus pendek jatuh tempo berkali-kali dalam satu horizon. Menyisihkan
+  // hanya kejadian terdekat akan membuat jatah harian tampak lebih longgar
+  // daripada uang yang sebenarnya sudah punya nama.
   for (const cost of active) {
-    const due = nextMonthlyDue(today, cost.dueDay)
-    if (paidKeys.has(`${cost.id}:${periodOf(due)}`)) continue
+    let hasUnpaid = false
 
-    const days = daysBetween(today, due)
-    unpaidCount += 1
-    unpaidAmount += cost.amount
-    if (days <= horizonDays) {
+    for (const due of occurrencesWithin(today, cost, horizonDays)) {
+      if (paidKeys.has(`${cost.id}:${periodKeyFor(cost.recurrence, due)}`)) continue
+
+      const days = daysBetween(today, due)
+      hasUnpaid = true
+      unpaidAmount += cost.amount
       scheduled += cost.amount
+      if (daysToNextDue === null || days < daysToNextDue) {
+        daysToNextDue = days
+      }
     }
-    if (daysToNextDue === null || days < daysToNextDue) {
-      daysToNextDue = days
-    }
+
+    if (hasUnpaid) unpaidCount += 1
   }
 
   return { scheduled, unpaidCount, unpaidAmount, daysToNextDue }

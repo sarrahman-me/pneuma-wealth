@@ -37,5 +37,3 @@ export const addDays = (date: LocalDate, days: number): LocalDate => {
   return formatLocalDate(next)
 }
 
-/** Periode bulan `YYYY-MM`. */
-export const periodOf = (date: LocalDate): string => date.slice(0, 7)

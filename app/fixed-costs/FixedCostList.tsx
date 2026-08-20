@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import {
   addFixedCost,
   deleteFixedCost,
@@ -15,11 +15,23 @@ export type FixedCostView = {
   id: string
   name: string
   amount: number
-  dueDay: number
+  /** Siklusnya dalam bahasa manusia, mis. "Setiap Senin". */
+  scheduleLabel: string
   daysToDue: number
+  /** Berapa kali biaya ini masih akan jatuh tempo dalam horizon kewajiban. */
+  unpaidAhead: number
   period: string
   paid: boolean
 }
+
+const WEEKDAY_OPTIONS = [
+  'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
+]
+
+const MONTH_OPTIONS = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+]
 
 const useAction = (action: (formData: FormData) => Promise<ActionResult>) =>
   useActionState(
@@ -34,17 +46,23 @@ function Row({ cost }: { cost: FixedCostView }) {
   const [deleteState, deleteAction, deletePending] = useAction(deleteFixedCost)
 
   const dueLabel = cost.paid
-    ? `Lunas untuk ${cost.period}`
+    ? 'Yang terdekat sudah lunas'
     : cost.daysToDue === 0
       ? 'Jatuh tempo hari ini'
       : `Jatuh tempo ${cost.daysToDue} hari lagi`
+
+  // Untuk siklus pendek, sekali jatuh tempo bukan gambaran utuh: yang benar-
+  // benar disisihkan adalah seluruh kejadian dalam horizon.
+  const aheadLabel =
+    cost.unpaidAhead > 1 ? ` · ${cost.unpaidAhead}× disisihkan ke depan` : ''
 
   return (
     <li className="fixed-row">
       <div className="tx-main">
         <p className="tx-title">{cost.name}</p>
         <p className="tx-meta">
-          Tanggal {cost.dueDay} · {dueLabel}
+          {cost.scheduleLabel} · {dueLabel}
+          {aheadLabel}
         </p>
         {paidState && !paidState.ok ? <p className="alert-error">{paidState.error}</p> : null}
         {deleteState && !deleteState.ok ? (
@@ -80,6 +98,9 @@ function Row({ cost }: { cost: FixedCostView }) {
 
 export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
   const [state, formAction, pending] = useAction(addFixedCost)
+  // Field jatuh tempo berubah arti mengikuti siklus, jadi pilihannya dijaga di
+  // state — menampilkan "tanggal 1–31" untuk tagihan mingguan hanya membingungkan.
+  const [recurrence, setRecurrence] = useState('monthly')
 
   return (
     <>
@@ -94,18 +115,67 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
             <MoneyInput name="amount" required />
           </label>
           <label>
-            Tanggal jatuh tempo
-            <input
-              name="due_day"
-              inputMode="numeric"
-              type="number"
-              min={1}
-              max={31}
-              defaultValue={1}
-              required
-            />
+            Siklus
+            <select
+              name="recurrence"
+              value={recurrence}
+              onChange={(event) => setRecurrence(event.target.value)}
+            >
+              <option value="daily">Harian</option>
+              <option value="weekly">Mingguan</option>
+              <option value="monthly">Bulanan</option>
+              <option value="yearly">Tahunan</option>
+            </select>
           </label>
+
+          {recurrence === 'weekly' ? (
+            <label>
+              Hari jatuh tempo
+              <select name="due_day" defaultValue={1}>
+                {WEEKDAY_OPTIONS.map((day, index) => (
+                  <option key={day} value={index + 1}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {recurrence === 'yearly' ? (
+            <label>
+              Bulan jatuh tempo
+              <select name="due_month" defaultValue={1}>
+                {MONTH_OPTIONS.map((month, index) => (
+                  <option key={month} value={index + 1}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {recurrence === 'monthly' || recurrence === 'yearly' ? (
+            <label>
+              Tanggal jatuh tempo
+              <input
+                name="due_day"
+                inputMode="numeric"
+                type="number"
+                min={1}
+                max={31}
+                defaultValue={1}
+                required
+              />
+            </label>
+          ) : null}
         </div>
+
+        {recurrence === 'daily' ? (
+          <p className="helper-text">
+            Biaya harian disisihkan untuk setiap hari dalam horizon kewajiban, jadi
+            jatah harianmu ikut menyesuaikan sejak sekarang.
+          </p>
+        ) : null}
 
         <button type="submit" className="btn btn-cta" disabled={pending}>
           {pending ? 'Menyimpan…' : 'Tambah biaya tetap'}

@@ -4,8 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/lib/db'
 import { accounts, fixedCostPayments, fixedCosts, transactions } from '@/lib/db/schema'
-import { nextMonthlyDue } from '@/lib/core/due'
-import { periodOf } from '@/lib/core/money'
+import { nextDue, periodKeyFor, type Recurrence } from '@/lib/core/due'
 import { todayIn } from '@/lib/core/timezone'
 import { requireCurrentUser } from '@/lib/server/user'
 import type { ActionResult } from './transactions'
@@ -16,8 +15,12 @@ const refresh = () => {
   revalidatePath('/summary')
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** Memastikan biaya tetap benar-benar milik pengguna ini. */
 const ownedFixedCost = async (userId: string, id: string) => {
+  if (!UUID_PATTERN.test(id)) throw new Error('Biaya tetap tidak ditemukan.')
+
   const [cost] = await getDb()
     .select()
     .from(fixedCosts)
@@ -27,22 +30,57 @@ const ownedFixedCost = async (userId: string, id: string) => {
   return cost
 }
 
+const RECURRENCES: Recurrence[] = ['daily', 'weekly', 'monthly', 'yearly']
+
+/**
+ * `due_day` berarti hal berbeda per siklus, jadi batasnya juga berbeda: hari
+ * dalam pekan untuk mingguan, tanggal untuk bulanan dan tahunan, dan tidak
+ * dipakai sama sekali untuk harian.
+ */
+const parseSchedule = (formData: FormData) => {
+  const raw = String(formData.get('recurrence') ?? 'monthly')
+  const recurrence = RECURRENCES.find((candidate) => candidate === raw)
+  if (!recurrence) throw new Error('Siklus tidak dikenali.')
+
+  if (recurrence === 'daily') {
+    return { recurrence, dueDay: 1, dueMonth: 1 }
+  }
+
+  const dueDay = Math.trunc(Number(formData.get('due_day') ?? 1))
+  if (recurrence === 'weekly') {
+    if (!Number.isFinite(dueDay) || dueDay < 1 || dueDay > 7) {
+      throw new Error('Pilih hari jatuh temponya dulu.')
+    }
+    return { recurrence, dueDay, dueMonth: 1 }
+  }
+
+  if (!Number.isFinite(dueDay) || dueDay < 1 || dueDay > 31) {
+    throw new Error('Tanggal jatuh tempo harus antara 1 dan 31.')
+  }
+
+  if (recurrence === 'monthly') {
+    return { recurrence, dueDay, dueMonth: 1 }
+  }
+
+  const dueMonth = Math.trunc(Number(formData.get('due_month') ?? 1))
+  if (!Number.isFinite(dueMonth) || dueMonth < 1 || dueMonth > 12) {
+    throw new Error('Bulan jatuh tempo harus antara 1 dan 12.')
+  }
+  return { recurrence, dueDay, dueMonth }
+}
+
 export const addFixedCost = async (formData: FormData): Promise<ActionResult> => {
   try {
     const user = await requireCurrentUser()
     const name = String(formData.get('name') ?? '').trim()
     const amount = Math.trunc(Number(String(formData.get('amount') ?? '').replace(/[^\d]/g, '')))
-    const dueDay = Math.trunc(Number(formData.get('due_day') ?? 1))
 
     if (!name) throw new Error('Nama biaya tetap wajib diisi.')
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Jumlah harus lebih dari 0.')
-    if (!Number.isFinite(dueDay) || dueDay < 1 || dueDay > 31) {
-      throw new Error('Tanggal jatuh tempo harus antara 1 dan 31.')
-    }
 
     await getDb()
       .insert(fixedCosts)
-      .values({ userId: user.id, name, amount, dueDay, recurrence: 'monthly' })
+      .values({ userId: user.id, name, amount, ...parseSchedule(formData) })
 
     refresh()
     return { ok: true }
@@ -85,7 +123,7 @@ export const markFixedCostPaid = async (formData: FormData): Promise<ActionResul
     const db = getDb()
 
     const today = todayIn(user.timezone)
-    const period = periodOf(nextMonthlyDue(today, cost.dueDay))
+    const period = periodKeyFor(cost.recurrence, nextDue(today, cost))
 
     const [existing] = await db
       .select()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, daysBetween, floorToThousand, periodOf } from './money'
+import { addDays, daysBetween, floorToThousand } from './money'
 
 describe('floorToThousand', () => {
   it('membulatkan ke bawah', () => {
@@ -24,9 +24,5 @@ describe('tanggal', () => {
 
   it('menolak format tidak valid', () => {
     expect(() => daysBetween('20-08-2026', '2026-08-01')).toThrow()
-  })
-
-  it('mengambil periode bulan', () => {
-    expect(periodOf('2026-08-20')).toBe('2026-08')
   })
 })

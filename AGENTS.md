@@ -34,6 +34,10 @@ Aplikasi web Next.js (App Router) dengan Postgres via Drizzle.
   server action wajib memverifikasi kepemilikan sebelum menulis.
 - Pengeluaran `source = 'fixed_cost'` tidak boleh ikut memakan jatah harian;
   kewajiban sudah dipotong lewat `scheduledObligations`.
+- Jatuh tempo biaya tetap selalu lewat `nextDue`/`occurrencesWithin`, tidak
+  pernah dengan mengasumsikan siklus bulanan. Kunci periode pembayaran dibuat
+  `periodKeyFor`; bentuk bulanan wajib tetap `YYYY-MM` supaya pembayaran lama
+  tidak mendadak tampak belum lunas.
 - `reserved + flexible === max(0, available)`. Jangan menambahkan lapis baru
   yang mengklaim rupiah yang sama dua kali; `bufferBalance` sengaja mengukur hal
   lain (kemajuan menuju aman), bukan bagian dari pembagian itu.
