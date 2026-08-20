@@ -3,7 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/lib/db'
-import { accounts, transactions } from '@/lib/db/schema'
+import { accounts, categories, transactions } from '@/lib/db/schema'
 import { todayIn } from '@/lib/core/timezone'
 import { requireCurrentUser } from '@/lib/server/user'
 
@@ -15,6 +15,18 @@ const parseAmount = (raw: FormDataEntryValue | null): number => {
     throw new Error('Jumlah harus lebih dari 0.')
   }
   return Math.trunc(amount)
+}
+
+/**
+ * Id yang tidak berbentuk UUID membuat Postgres melempar galat mentah berisi
+ * seluruh query — bukan sesuatu yang layak dibaca pengguna. Disaring di sini.
+ */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const transactionId = (raw: FormDataEntryValue | null): string => {
+  const id = String(raw ?? '').trim()
+  if (!UUID_PATTERN.test(id)) throw new Error('Transaksi tidak ditemukan.')
+  return id
 }
 
 const optional = (raw: FormDataEntryValue | null): string | null => {
@@ -46,6 +58,20 @@ const resolveAccountId = async (userId: string, raw: FormDataEntryValue | null) 
   return fallback.id
 }
 
+/** Kategori juga wajib diverifikasi kepemilikannya sebelum ditulis. */
+const resolveCategoryId = async (userId: string, raw: FormDataEntryValue | null) => {
+  const requested = optional(raw)
+  if (!requested) return null
+
+  const [owned] = await getDb()
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.id, requested), eq(categories.userId, userId)))
+    .limit(1)
+  if (!owned) throw new Error('Kategori tidak ditemukan.')
+  return owned.id
+}
+
 const refresh = () => {
   revalidatePath('/')
   revalidatePath('/history')
@@ -62,7 +88,8 @@ export const addTransaction = async (formData: FormData): Promise<ActionResult> 
       .values({
         userId: user.id,
         accountId: await resolveAccountId(user.id, formData.get('account_id')),
-        categoryId: kind === 'OUT' ? optional(formData.get('category_id')) : null,
+        categoryId:
+          kind === 'OUT' ? await resolveCategoryId(user.id, formData.get('category_id')) : null,
         kind,
         amount: parseAmount(formData.get('amount')),
         dateLocal: optional(formData.get('date_local')) ?? todayIn(user.timezone),
@@ -80,15 +107,14 @@ export const addTransaction = async (formData: FormData): Promise<ActionResult> 
 export const updateTransaction = async (formData: FormData): Promise<ActionResult> => {
   try {
     const user = await requireCurrentUser()
-    const id = optional(formData.get('id'))
-    if (!id) throw new Error('Transaksi tidak valid.')
+    const id = transactionId(formData.get('id'))
 
     const updated = await getDb()
       .update(transactions)
       .set({
         amount: parseAmount(formData.get('amount')),
         description: optional(formData.get('description')),
-        categoryId: optional(formData.get('category_id')),
+        categoryId: await resolveCategoryId(user.id, formData.get('category_id')),
         dateLocal: optional(formData.get('date_local')) ?? todayIn(user.timezone),
         updatedAt: new Date(),
       })
@@ -114,8 +140,7 @@ export const updateTransaction = async (formData: FormData): Promise<ActionResul
 export const deleteTransaction = async (formData: FormData): Promise<ActionResult> => {
   try {
     const user = await requireCurrentUser()
-    const id = optional(formData.get('id'))
-    if (!id) throw new Error('Transaksi tidak valid.')
+    const id = transactionId(formData.get('id'))
 
     const removed = await getDb()
       .delete(transactions)
