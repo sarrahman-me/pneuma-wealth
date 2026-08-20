@@ -8,25 +8,31 @@
     "build": "next build",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "ui:smoke": "node scripts/ui-smoke.mjs",
-    "check": "npm run lint && npm run typecheck && npm run ui:smoke",
-    "tauri": "tauri"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "test": "vitest run",
+    "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
+    "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-dialog": "^2",
-    "@tauri-apps/plugin-opener": "^2",
+    "@clerk/nextjs": "^7.7.9",
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
     "next": "^15.5.9",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
-    "eslint": "^9.26.0",
-    "eslint-config-next": "^15.5.9",
     "@types/node": "^22.10.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "typescript": "~5.8.3"
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.26.0",
+    "eslint-config-next": "^15.5.9",
+    "typescript": "~5.8.3",
+    "vitest": "^4.1.11"
   }
 }

@@ -1,91 +1,86 @@
 # PNEUMA
 
-## Project Overview
-PNEUMA is a local-first personal finance desktop app for people who want calm, daily guidance without the weight of complex tools. It focuses on a simple rhythm: what you can spend today, how safe your buffer is, and what to do next. The app is intentionally minimal so you can build awareness without being pushed, judged, or overwhelmed.
+Pelacak keuangan pribadi yang tenang, berbasis web. Fokusnya satu pertanyaan:
+**berapa yang boleh saya belanjakan hari ini, tanpa merusak besok.**
 
-## Core Philosophy (Non-Technical)
-- Daily limits exist to protect tomorrow, not to punish today. A clear daily number reduces decision fatigue.
-- The buffer fund (Dana Penyangga) matters more than total balance because it is your safety margin.
-- The app avoids loud alerts, charts overload, and gamification to keep attention on daily clarity.
-- Calm mode: the buffer is safe; guidance is gentle and steady.
-- Tight mode: the buffer is being used; guidance becomes more strict and protective.
+Dirancang untuk pemasukan yang tidak menentu — freelance, usaha, proyek — di
+mana metrik yang berguna bukan "sisa bulan ini", tapi **runway**: berapa lama
+kamu aman tanpa pemasukan baru.
 
-## Key Features
-- Daily spending recommendation (rounded down to stay conservative).
-- Dana Penyangga (buffer fund) tracking.
-- Coaching Insight: short status, bullet points, and a next step.
-- Automatic mode switching between calm and tight based on buffer usage.
-- Local-only SQLite storage.
-- No account, no login, no sync.
+## Cara kerjanya
 
-## Coaching Insight Engine (Technical + Conceptual)
-The coaching insight engine is a small rules system that produces human-readable guidance from your current financial state. It lives in the Rust backend so it can stay close to the data and remain deterministic. Rules are evaluated in a fixed priority order so the output never contradicts itself.
-
-Example logic in prose: if onboarding is incomplete, show a setup prompt; otherwise if spending is over budget, show an overspend warning; otherwise if there are no transactions, suggest logging the first one; otherwise continue with buffer and consistency guidance.
-
-See `src-tauri/src/insight.rs` for the implementation.
-
-## Architecture Overview (Technical)
-PNEUMA combines a Rust backend with a Next.js frontend to keep the app fast, local, and easy to iterate on.
+Uangmu dipilah berlapis, dan tiap lapis punya alasan:
 
 ```
-Next.js UI (App Router)
-        |
-Tauri bridge (commands)
-        |
-Rust backend (rules + SQLite)
-        |
-Local SQLite file (app data dir)
+saldo likuid              saldo akun harian (tabungan tidak termasuk)
+− kewajiban terjadwal     tagihan belum lunas yang jatuh tempo dalam horizon
+= uang tersedia           yang benar-benar bebas kamu atur
+− dana penyangga          biaya hidup harian × target hari penyangga
+= dana fleksibel          dibagi sepanjang horizon jatah → jatah harian
 ```
 
-- Rust handles data storage, rule evaluation, and system-level work.
-- Next.js renders the UI, navigation, and interaction flows.
-- SQLite is used as a local database with no external services.
-- There is no cloud by design to keep data private and portable.
+Tiga keputusan yang membedakannya dari aplikasi pencatat biasa:
 
-## Data & Privacy
-All data lives on your machine in the Tauri app data directory. You own the data entirely.
-- No telemetry
-- No analytics
-- No accounts
-- No internet required
+**Kewajiban dipotong di depan.** Sewa yang belum dibayar tidak pernah tampil
+sebagai uang bebas. Konsekuensinya, saat kamu membayarnya, jatah harianmu tidak
+ikut jatuh — uangnya memang sudah disisihkan sejak awal.
 
-## Screenshots
-(Screenshots will be added here)
+**Jatah harian dikunci, bukan dihitung ulang tiap hari.** Angkanya ditetapkan
+per minggu dan hanya berubah kalau seminggu berlalu atau dana fleksibel berubah
+besar (≥20%). Angka yang bergoyang tiap hari tidak bisa dijadikan pegangan.
 
-## Development Setup
-Prerequisites:
-- Xcode Command Line Tools (`xcode-select -p`)
-- Node.js + npm
-- Rust toolchain (macOS target for your architecture)
+**Sisa dan kelebihan terbawa, tapi dibatasi.** Sisa hari ini menambah jatah
+besok maksimal 1× jatah; kelebihan memotong jatah besok maksimal 0,5×. Hemat
+terasa hasilnya, boros ada konsekuensinya, tapi tidak ada spiral.
 
-Local development:
+## Coaching
+
+Mesin aturan deterministik dengan prioritas tetap — yang pertama cocok menang,
+jadi keluarannya tidak pernah bertentangan dengan dirinya sendiri. Urutannya
+ada di `lib/core/insight.ts`, dari `onboarding_incomplete` sampai `steady`.
+
+Fungsinya murni: tidak menyentuh database, tidak punya efek samping. Pencatatan
+"memory" antar hari adalah langkah terpisah, jadi sekadar me-refresh halaman
+tidak mencemari riwayat.
+
+## Arsitektur
+
+```
+Next.js App Router (server components + server actions)
+        |
+lib/core/     logika murni, tanpa I/O, teruji unit test
+lib/server/   perakitan state, query, auth
+        |
+Drizzle ORM → Neon Postgres
+```
+
+Semua nilai uang adalah bilangan bulat rupiah. Tidak ada tipe pecahan di mana
+pun. `date_local` selalu dihitung terhadap zona waktu pengguna, bukan zona
+waktu server.
+
+## Pengembangan
+
 ```bash
 npm install
-npm run tauri dev
+npm run dev
 ```
 
-Build:
-```bash
-npm install
-npm run build
-npm run tauri build
-```
+Tanpa kunci Clerk, aplikasi berjalan dengan pengguna dev lokal — praktis untuk
+mengembangkan UI. Di produksi, ketiadaan Clerk membuat aplikasi menolak jalan,
+bukan melayani data keuangan tanpa autentikasi.
 
-Artifacts:
-- `.app`: `src-tauri/target/release/bundle/macos/PNEUMA.app`
-- `.dmg`: `src-tauri/target/release/bundle/dmg/PNEUMA_0.1.0_aarch64.dmg` (name varies by arch/version)
+| Perintah | Fungsi |
+|---|---|
+| `npm run check` | lint + typecheck + test |
+| `npm run test` | unit test logika inti |
+| `npm run db:generate` | buat migrasi dari perubahan skema |
+| `npm run db:migrate` | terapkan migrasi |
+| `npm run db:studio` | lihat isi database |
 
-## macOS Distribution Notes
-- `.app` is the raw application bundle produced by Tauri.
-- `.dmg` is the disk image used for distribution and drag-and-drop install.
-- Unsigned builds may be blocked by Gatekeeper. If blocked, open System Settings → Privacy & Security → Open Anyway for PNEUMA.
-- For signing and notarization (optional), set:
-  - `APPLE_SIGNING_IDENTITY` for codesigning
-  - `APPLE_ID`, `APPLE_PASSWORD` (app-specific), and `APPLE_TEAM_ID` for notarization
+Environment: `vercel env pull .env.local`.
 
-## Project Status & Scope
-PNEUMA is a personal project and is intentionally local-first. There is no public roadmap or promise of long-term support. Contributions are welcome but not required.
+## Status
 
-## License
-License to be added.
+Project pribadi. Siklus biaya tetap yang didukung baru bulanan; enum
+`recurrence` di skema sudah menyiapkan mingguan dan tahunan, tapi UI belum
+menawarkannya.

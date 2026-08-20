@@ -731,3 +731,103 @@ button.secondary:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* Actions
+   `.pill` is a small status chip; actions need their own, tappable style. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: 1px solid #d8cfc2;
+  border-radius: 999px;
+  background: #1c1b19;
+  color: #f6f3ee;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.86;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-quiet {
+  background: #f2ece3;
+  color: #1c1b19;
+}
+
+/* Segmented toggle: chip-shaped, but large enough to actually tap. */
+.segmented {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.segmented button {
+  padding: 10px 18px;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.segmented button.pill-muted {
+  border-color: #ded5c8;
+}
+
+/* Quick entry: fields fill the row, the action sits on its own line below. */
+.quick-entry-body {
+  display: block;
+}
+
+.quick-entry-body .btn {
+  margin-top: 18px;
+}
+
+.fixed-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fixed-form .btn,
+.rules-editor .btn {
+  margin-top: 18px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+label input,
+label select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid #ded5c8;
+  border-radius: 10px;
+  background: #fffdfa;
+  font-family: inherit;
+  font-size: 15px;
+  color: #1c1b19;
+}
+
+label input:focus,
+label select:focus {
+  outline: 2px solid #c9a227;
+  outline-offset: 1px;
+}

@@ -1,49 +1,25 @@
-"use client";
+import type { CoachingInsight } from '@/lib/core/insight-types'
 
-import React from "react";
+const toneClass = (insight: CoachingInsight) => {
+  if (insight.tone === 'alert') return 'insight-card insight-alert'
+  if (insight.ruleId === 'consistency_praise') return 'insight-card insight-praise'
+  if (insight.mode === 'watchful') return 'insight-card insight-warn'
+  return 'insight-card insight-calm'
+}
 
-export type CoachingInsight = {
-  status_title: string;
-  bullets: string[];
-  next_step: string;
-  tone: "calm" | "alert" | string;
-  coach_mode: "calm" | "watchful" | string;
-  continuity_line?: string | null;
-  memory_reflection?: string | null;
-  debug_meta?: {
-    rule_id: string;
-    key_numbers: number[];
-  } | null;
-};
-
-type CoachingInsightCardProps = {
-  insight: CoachingInsight;
-  compact?: boolean;
-};
-
-export default function CoachingInsightCard({
-  insight,
-  compact,
-}: CoachingInsightCardProps) {
-  const bulletItems = compact ? insight.bullets.slice(0, 1) : insight.bullets;
-
+export default function CoachingInsightCard({ insight }: { insight: CoachingInsight }) {
   return (
-    <div className={`insight-card insight-${insight.tone}`}>
-      {insight.continuity_line && (
-        <div className="insight-continuity">{insight.continuity_line}</div>
-      )}
-      <div className="insight-title">{insight.status_title}</div>
-      {!compact && insight.memory_reflection && (
-        <div className="insight-memory">{insight.memory_reflection}</div>
-      )}
-      {bulletItems.length > 0 && (
-        <ul className="insight-bullets">
-          {bulletItems.map((item, index) => (
-            <li key={`${item}-${index}`}>{item}</li>
-          ))}
-        </ul>
-      )}
-      {!compact && <div className="insight-next">{insight.next_step}</div>}
-    </div>
-  );
+    <section className={toneClass(insight)}>
+      {insight.continuityLine ? (
+        <p className="insight-continuity">{insight.continuityLine}</p>
+      ) : null}
+      <h2 className="insight-title">{insight.statusTitle}</h2>
+      <ul className="insight-bullets">
+        {insight.bullets.map((bullet) => (
+          <li key={bullet}>{bullet}</li>
+        ))}
+      </ul>
+      <p className="insight-next">{insight.nextStep}</p>
+    </section>
+  )
 }

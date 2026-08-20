@@ -1,216 +1,144 @@
-"use client";
+import Link from 'next/link'
+import { and, desc, eq, gte, lte } from 'drizzle-orm'
+import TransactionRow, { type TransactionView } from '../components/TransactionRow'
+import { getDb } from '@/lib/db'
+import { categories, transactions } from '@/lib/db/schema'
+import { addDays } from '@/lib/core/money'
+import { todayIn } from '@/lib/core/timezone'
+import { formatRupiah } from '@/lib/core/format'
+import { getCurrentUser } from '@/lib/server/user'
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { formatRupiah } from "../lib/format";
+export const dynamic = 'force-dynamic'
 
-type Transaction = {
-  id: number;
-  ts_utc: number;
-  date_local: string;
-  kind: "IN" | "OUT";
-  amount: number;
-  source: "manual" | "fixed_cost";
-  fixed_cost_id: number | null;
-  description: string | null;
-};
+const RANGES = [
+  { key: '7', label: '7 hari' },
+  { key: '30', label: '30 hari' },
+  { key: '90', label: '90 hari' },
+] as const
 
-const formatLocalDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+type SearchParams = Promise<{ range?: string; kind?: string }>
 
-const formatLocalTime = (timestamp: number) =>
-  new Date(timestamp).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const user = await getCurrentUser()
+  if (!user) {
+    return (
+      <main>
+        <h1>Riwayat</h1>
+        <p>
+          <Link href="/sign-in">Masuk</Link> untuk melihat riwayat.
+        </p>
+      </main>
+    )
+  }
 
-const subtractDays = (days: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date;
-};
+  const params = await searchParams
+  const range = RANGES.find((option) => option.key === params.range) ?? RANGES[1]
+  const kindFilter = params.kind === 'IN' || params.kind === 'OUT' ? params.kind : null
 
-export default function HistoryPage() {
-  const [rangeDays, setRangeDays] = useState<0 | 7 | 30>(30);
-  const [kindFilter, setKindFilter] = useState<"all" | "IN" | "OUT">("all");
-  const [items, setItems] = useState<Transaction[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const today = todayIn(user.timezone)
+  const start = addDays(today, -(Number(range.key) - 1))
 
-  const todayString = useMemo(() => formatLocalDate(new Date()), []);
-  const startDate = useMemo(() => {
-    if (rangeDays === 0) {
-      return todayString;
-    }
-    return formatLocalDate(subtractDays(rangeDays - 1));
-  }, [rangeDays, todayString]);
+  const rows: TransactionView[] = await getDb()
+    .select({
+      id: transactions.id,
+      kind: transactions.kind,
+      amount: transactions.amount,
+      dateLocal: transactions.dateLocal,
+      description: transactions.description,
+      source: transactions.source,
+      categoryName: categories.name,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(
+      and(
+        eq(transactions.userId, user.id),
+        gte(transactions.dateLocal, start),
+        lte(transactions.dateLocal, today),
+        kindFilter ? eq(transactions.kind, kindFilter) : undefined,
+      ),
+    )
+    .orderBy(desc(transactions.dateLocal), desc(transactions.createdAt))
+    .limit(200)
 
-  const fetchTransactions = useCallback(
-    async (nextOffset: number, reset: boolean) => {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await invoke<Transaction[]>("list_transactions_between", {
-          start_date: startDate,
-          end_date: todayString,
-          limit: 30,
-          offset: nextOffset,
-          kind: kindFilter === "all" ? null : kindFilter,
-        });
-        setItems((prev) => (reset ? data : [...prev, ...data]));
-        setHasMore(data.length === 30);
-        setOffset(nextOffset + data.length);
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [startDate, todayString, kindFilter],
-  );
+  const totalIn = rows
+    .filter((row) => row.kind === 'IN')
+    .reduce((sum, row) => sum + row.amount, 0)
+  const totalOut = rows
+    .filter((row) => row.kind === 'OUT')
+    .reduce((sum, row) => sum + row.amount, 0)
 
-  useEffect(() => {
-    setOffset(0);
-    fetchTransactions(0, true);
-  }, [fetchTransactions]);
-
-  const handleDelete = async (tx: Transaction) => {
-    const confirmed = await confirm(
-      "Hapus transaksi ini? Tindakan ini tidak bisa dibatalkan.",
-      { title: "Konfirmasi", kind: "warning" },
-    );
-    if (!confirmed) {
-      return;
-    }
-    setStatus("");
-    setDeletingId(tx.id);
-    try {
-      await invoke("delete_transaction", { transaction_id: tx.id });
-      setStatus("Transaksi berhasil dihapus.");
-      setOffset(0);
-      fetchTransactions(0, true);
-    } catch (err) {
-      setError(`Gagal menghapus transaksi: ${String(err)}`);
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const href = (next: { range?: string; kind?: string }) => {
+    const query = new URLSearchParams()
+    query.set('range', next.range ?? range.key)
+    const kind = next.kind ?? kindFilter ?? ''
+    if (kind) query.set('kind', kind)
+    return `/history?${query.toString()}`
+  }
 
   return (
     <main>
-      <h1>Riwayat Transaksi</h1>
-      <p>Telusuri transaksi berdasarkan rentang tanggal dan jenis.</p>
+      <h1>Riwayat</h1>
 
-      <section>
-        <div className="history-toolbar">
-          <div className="segmented">
-            <button
-              type="button"
-              className={rangeDays === 0 ? "active" : ""}
-              onClick={() => setRangeDays(0)}
+      <div className="history-toolbar">
+        <div className="filter-row">
+          {RANGES.map((option) => (
+            <Link
+              key={option.key}
+              href={href({ range: option.key })}
+              className={option.key === range.key ? 'pill pill-out' : 'pill pill-muted'}
             >
-              Hari ini
-            </button>
-            <button
-              type="button"
-              className={rangeDays === 7 ? "active" : ""}
-              onClick={() => setRangeDays(7)}
-            >
-              7 hari
-            </button>
-            <button
-              type="button"
-              className={rangeDays === 30 ? "active" : ""}
-              onClick={() => setRangeDays(30)}
-            >
-              30 hari
-            </button>
-          </div>
-          <div className="filter-row">
-            <label htmlFor="kind-filter">Jenis</label>
-            <select
-              id="kind-filter"
-              value={kindFilter}
-              onChange={(event) =>
-                setKindFilter(event.target.value as "all" | "IN" | "OUT")
-              }
-            >
-              <option value="all">Semua</option>
-              <option value="OUT">Pengeluaran</option>
-              <option value="IN">Pemasukan</option>
-            </select>
-          </div>
-        </div>
-
-        {status && <span className="pill pill-muted">{status}</span>}
-        {error && <div className="metric-error">{error}</div>}
-
-        <div className="tx-list">
-          {loading && items.length === 0 && (
-            <div className="skeleton">
-              <span className="skeleton-line" />
-              <span className="skeleton-line" />
-              <span className="skeleton-line" />
-            </div>
-          )}
-          {!loading && items.length === 0 && (
-            <div className="empty-state">
-              <div className="empty-title">Kosong untuk rentang ini.</div>
-              <div className="empty-desc">
-                Coba ganti ke 30 hari atau pilih “Semua” untuk melihat lebih banyak.
-              </div>
-            </div>
-          )}
-          {items.map((tx) => (
-            <div className="tx-row" key={tx.id}>
-              <div className="tx-main">
-                <div className="tx-title">
-                  <span className={`pill ${tx.kind === "OUT" ? "pill-out" : "pill-in"}`}>
-                    {tx.kind === "OUT" ? "Keluar" : "Masuk"}
-                  </span>
-                  <span className="tx-amount">{formatRupiah(tx.amount)}</span>
-                </div>
-                {tx.description && <div className="tx-desc">{tx.description}</div>}
-                <div className="tx-meta">
-                  <span>{tx.date_local}</span>
-                  <span>{formatLocalTime(tx.ts_utc)}</span>
-                  <span className="pill pill-muted">
-                    {tx.source === "fixed_cost" ? "Biaya Tetap" : "Manual"}
-                  </span>
-                </div>
-              </div>
-              <button
-                className="link-button"
-                type="button"
-                onClick={() => handleDelete(tx)}
-                disabled={deletingId === tx.id}
-              >
-                {deletingId === tx.id ? "Menghapus..." : "Hapus"}
-              </button>
-            </div>
+              {option.label}
+            </Link>
           ))}
         </div>
 
-        <div className="history-footer">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => fetchTransactions(offset, false)}
-            disabled={!hasMore || loading}
+        <div className="filter-row">
+          <Link
+            href={href({ kind: '' })}
+            className={kindFilter === null ? 'pill pill-out' : 'pill pill-muted'}
           >
-            {loading ? "Memuat..." : hasMore ? "Muat lebih banyak" : "Tidak ada lagi"}
-          </button>
+            Semua
+          </Link>
+          <Link
+            href={href({ kind: 'OUT' })}
+            className={kindFilter === 'OUT' ? 'pill pill-out' : 'pill pill-muted'}
+          >
+            Pengeluaran
+          </Link>
+          <Link
+            href={href({ kind: 'IN' })}
+            className={kindFilter === 'IN' ? 'pill pill-in' : 'pill pill-muted'}
+          >
+            Pemasukan
+          </Link>
         </div>
-      </section>
+      </div>
+
+      <p className="helper-text">
+        Masuk {formatRupiah(totalIn)} · Keluar {formatRupiah(totalOut)} · {rows.length} catatan
+      </p>
+
+      {rows.length === 0 ? (
+        <div className="empty-state">
+          <p className="empty-title">Belum ada catatan di rentang ini.</p>
+          <p className="empty-desc">Coba perlebar rentang waktunya.</p>
+        </div>
+      ) : (
+        <ul className="tx-list">
+          {rows.map((transaction) => (
+            <TransactionRow key={transaction.id} transaction={transaction} showDate />
+          ))}
+        </ul>
+      )}
+
+      {rows.length === 200 ? (
+        <p className="history-footer">Menampilkan 200 catatan terbaru.</p>
+      ) : null}
     </main>
-  );
+  )
 }

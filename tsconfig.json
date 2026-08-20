@@ -28,7 +28,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "baseUrl": "."
   },
   "include": [
     "**/*.ts",

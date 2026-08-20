@@ -26,3 +26,10 @@ dist-ssr
 .next
 /out
 tsconfig.tsbuildinfo
+.vercel
+.env*
+
+# Agent/plugin artifacts
+.agents/
+.claude/skills/
+skills-lock.json
