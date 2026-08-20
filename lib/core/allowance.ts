@@ -7,6 +7,7 @@
  * alasan nyata: seminggu berlalu, atau dana fleksibel berubah besar.
  */
 
+import type { IncomeCadence } from './cadence'
 import { daysBetween, floorToThousand } from './money'
 import type {
   AllowanceAnchor,
@@ -28,16 +29,46 @@ export const CARRY_FORWARD_RATIO = 1
 /** Kelebihan kemarin dipotong paling banyak setengah jatah dasar, supaya tidak spiral. */
 export const CARRY_DEBT_RATIO = 0.5
 
-/** Jatah dasar dari dana fleksibel, sebelum carry-over. */
+/**
+ * Horizon pembagian jatah, disesuaikan dengan ritme pemasukan yang nyata.
+ *
+ * Membagi uang sepanjang 30 hari padahal pemasukan datang tiap 42 hari adalah
+ * penyebab langsung kehabisan uang sebelum pemasukan berikutnya. Kalau riwayat
+ * menunjukkan jeda yang lebih panjang dari setelan manual, jeda itulah yang
+ * dipakai. Arahnya sengaja satu sisi — hanya boleh memperpanjang, tidak pernah
+ * memperpendek — jadi penyesuaian ini tidak pernah membuat jatah membesar
+ * melebihi yang pengguna izinkan sendiri.
+ */
+export const resolveHorizonDays = (
+  settings: Settings,
+  cadence: IncomeCadence | null,
+): { days: number; fromCadence: boolean } => {
+  const manual = settings.allowanceHorizonDays
+  const observed = cadence?.suggestedBufferDays ?? null
+
+  if (observed === null || observed <= manual) {
+    return { days: manual, fromCadence: false }
+  }
+  return { days: observed, fromCadence: true }
+}
+
+/**
+ * Jatah dasar dari dana fleksibel, sebelum carry-over.
+ *
+ * `allowanceMin` dulu hanya berlaku setelah penyangga penuh, yang berarti
+ * pengguna dengan penyangga belum penuh selalu melihat Rp 0. Sekarang batas
+ * bawah selalu berlaku, tapi tidak pernah menjanjikan lebih dari yang sanggup
+ * ditopang uang tersedia sepanjang horizon — jadi tetap tidak bisa berbohong.
+ */
 export const computeBaseAllowance = (funds: Funds, settings: Settings): number => {
   const horizon = settings.allowanceHorizonDays
-  const raw = horizon > 0 ? Math.floor(funds.flexible / horizon) : 0
-  const capped = Math.min(raw, settings.allowanceMax)
-  const rounded = floorToThousand(Math.max(0, capped))
+  if (horizon <= 0) return 0
 
-  // Batas bawah hanya berlaku kalau penyangga sudah aman. Kalau belum, menaikkan
-  // jatah ke `allowanceMin` justru akan menggerogoti penyangga.
-  return funds.bufferFilled ? Math.max(rounded, settings.allowanceMin) : rounded
+  const fromFlexible = Math.floor(Math.max(0, funds.flexible) / horizon)
+  const supportable = Math.floor(Math.max(0, funds.available) / horizon)
+  const lifted = Math.max(fromFlexible, Math.min(settings.allowanceMin, supportable))
+
+  return floorToThousand(Math.min(lifted, settings.allowanceMax))
 }
 
 export const needsReanchor = (

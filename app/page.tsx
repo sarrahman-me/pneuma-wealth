@@ -1,11 +1,15 @@
 import Link from 'next/link'
 import { and, desc, eq } from 'drizzle-orm'
 import CoachingInsightCard from './components/CoachingInsightCard'
+import AllowanceMeter from './components/AllowanceMeter'
+import IncomeRitual from './components/IncomeRitual'
 import QuickEntry from './components/QuickEntry'
 import TransactionRow, { type TransactionView } from './components/TransactionRow'
+import BurnChart from './components/charts/BurnChart'
+import RhythmChart from './components/charts/RhythmChart'
 import { getDb } from '@/lib/db'
 import { categories, transactions } from '@/lib/db/schema'
-import { formatRupiah } from '@/lib/core/format'
+import { formatMultiplier, formatRupiah } from '@/lib/core/format'
 import { getCurrentUser, listAccounts, listCategories } from '@/lib/server/user'
 import { getDailyState } from '@/lib/server/state'
 
@@ -52,11 +56,15 @@ export default async function Home() {
     fetchToday(user.id, state.today),
   ])
 
-  const { allowance, funds } = state
+  const { allowance, funds, pace, stats } = state
 
   return (
     <main>
       <h1>Hari ini</h1>
+
+      {state.incomePlan ? (
+        <IncomeRitual plan={state.incomePlan} cadence={state.cadence} />
+      ) : null}
 
       <CoachingInsightCard insight={state.insight} />
 
@@ -69,9 +77,10 @@ export default async function Home() {
 
       <section className="home-hero">
         <div className="hero-grid">
-          <div className="hero-card">
+          <div className="hero-card hero-primary">
             <p className="hero-label">Boleh dipakai hari ini</p>
             <p className="hero-value">{formatRupiah(allowance.allowed)}</p>
+            <AllowanceMeter allowance={allowance} />
             {allowance.carry !== 0 ? (
               <p className="helper-text">
                 {allowance.carry > 0
@@ -99,6 +108,45 @@ export default async function Home() {
         </div>
       </section>
 
+      {pace.daysElapsed !== null ? (
+        <section className="pace-strip">
+          <div className="pace-item">
+            <span className="pace-label">Siklus berjalan</span>
+            <span className="pace-value">hari ke-{pace.daysElapsed}</span>
+          </div>
+          <div className="pace-item">
+            <span className="pace-label">Laju vs rencana</span>
+            <span
+              className={
+                pace.paceRatio !== null && pace.paceRatio > 1.2
+                  ? 'pace-value pace-value-alert'
+                  : 'pace-value'
+              }
+            >
+              {pace.paceRatio !== null ? formatMultiplier(pace.paceRatio) : '—'}
+            </span>
+          </div>
+          <div className="pace-item">
+            <span className="pace-label">Habis dalam</span>
+            <span
+              className={
+                pace.shortfallDays !== null && pace.shortfallDays > 0
+                  ? 'pace-value pace-value-alert'
+                  : 'pace-value'
+              }
+            >
+              {pace.daysUntilEmpty !== null ? `${pace.daysUntilEmpty} hari` : '—'}
+            </span>
+          </div>
+          {pace.expectedCycleDays !== null ? (
+            <div className="pace-item">
+              <span className="pace-label">Pemasukan biasanya</span>
+              <span className="pace-value">{pace.expectedCycleDays} hari sekali</span>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <QuickEntry
         accounts={accounts.map((account) => ({ id: account.id, name: account.name }))}
         categories={categoryList.map((category) => ({
@@ -107,6 +155,26 @@ export default async function Home() {
         }))}
         today={state.today}
       />
+
+      <section className="wish-cta">
+        <div>
+          <h2>Ada yang ingin dibeli?</h2>
+          <p className="helper-text">
+            Catat dulu, tahan sebentar. Yang bertahan melewati jedanya memang layak dibeli.
+            {stats.wishWaitingCount > 0
+              ? ` Sekarang ada ${stats.wishWaitingCount} yang sedang ditahan.`
+              : ''}
+          </p>
+        </div>
+        <Link href="/wishlist" className="btn">
+          {stats.wishReadyCount > 0
+            ? `${stats.wishReadyCount} menunggu keputusan`
+            : 'Buka daftar keinginan'}
+        </Link>
+      </section>
+
+      <BurnChart burn={state.burn} pace={pace} />
+      <RhythmChart days={state.recentDays} />
 
       <section className="tx-list">
         <div className="tx-header">

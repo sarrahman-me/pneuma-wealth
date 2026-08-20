@@ -11,14 +11,20 @@ import {
   fixedCostPayments,
   fixedCosts,
   transactions,
+  wishItems,
 } from '../db/schema'
 import {
+  computeBaseAllowance,
+  resolveHorizonDays,
   computeCarry,
   computeDailyAllowance,
   createAnchor,
   needsReanchor,
 } from '../core/allowance'
+import { planIncome, type IncomePlan } from '../core/income'
 import { computeFunds } from '../core/funds'
+import { analyzeIncome, type IncomeCadence } from '../core/cadence'
+import { computePace, type Pace } from '../core/pace'
 import { computeInsight, timeBucketOf } from '../core/insight'
 import { addDays, daysBetween, periodOf } from '../core/money'
 import { nextMonthlyDue } from '../core/due'
@@ -35,19 +41,45 @@ export type Obligations = {
   daysToNextDue: number | null
 }
 
+/** Satu hari di grafik ritme: yang dipakai versus yang dijatah. */
+export type DayPoint = {
+  dateLocal: string
+  spent: number
+  allowed: number
+}
+
+/** Satu titik di kurva pembakaran sejak pemasukan terakhir. */
+export type BurnPoint = {
+  dateLocal: string
+  dayIndex: number
+  cumulative: number
+  planned: number
+}
+
 export type DailyState = {
   today: string
   funds: Funds
   allowance: DailyAllowance
   anchor: AllowanceAnchor
   obligations: Obligations
+  /** Horizon jatah yang benar-benar dipakai, dan dari mana asalnya. */
+  horizon: { days: number; fromCadence: boolean }
   stats: InsightStats
   insight: CoachingInsight
+  cadence: IncomeCadence
+  pace: Pace
+  /** 14 hari terakhir, untuk grafik ritme harian. */
+  recentDays: DayPoint[]
+  /** Kurva kumulatif sejak pemasukan terakhir. Kosong bila belum ada pemasukan. */
+  burn: BurnPoint[]
+  /** Pemecahan pemasukan yang masuk hari ini. Null bila hari ini tidak ada. */
+  incomePlan: IncomePlan | null
 }
 
 const toSettings = (row: CurrentUser['settings']): Settings => ({
   dailyLivingCost: row.dailyLivingCost,
   bufferDays: row.bufferDays,
+  bufferFillPercent: row.bufferFillPercent,
   allowanceHorizonDays: row.allowanceHorizonDays,
   allowanceMin: row.allowanceMin,
   allowanceMax: row.allowanceMax,
@@ -151,6 +183,7 @@ const fetchStats = async (
   userId: string,
   today: string,
   obligations: Obligations,
+  wish: WishSummary,
 ): Promise<InsightStats> => {
   const db = getDb()
   const weekStart = addDays(today, -6)
@@ -161,6 +194,7 @@ const fetchStats = async (
       todayCount: sql<number>`COUNT(*) FILTER (WHERE ${transactions.dateLocal} = ${today})::int`,
       daysWithTx: sql<number>`COUNT(DISTINCT ${transactions.dateLocal}) FILTER (WHERE ${transactions.dateLocal} >= ${weekStart})::int`,
       lastIncome: sql<string | null>`MAX(${transactions.dateLocal}) FILTER (WHERE ${transactions.kind} = 'IN')`,
+      incomeToday: sql<number>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.kind} = 'IN' AND ${transactions.dateLocal} = ${today}), 0)::bigint`,
     })
     .from(transactions)
     .where(eq(transactions.userId, userId))
@@ -195,10 +229,153 @@ const fetchStats = async (
     discretionaryShare7d:
       categorized > 0 ? Number(nature?.discretionary ?? 0) / categorized : null,
     daysSinceIncome: counts?.lastIncome ? daysBetween(counts.lastIncome, today) : null,
+    incomeToday: Number(counts?.incomeToday ?? 0),
     unpaidFixedCostCount: obligations.unpaidCount,
     unpaidFixedCostAmount: obligations.unpaidAmount,
     daysToNextDue: obligations.daysToNextDue,
+    wishReadyCount: wish.readyCount,
+    wishWaitingCount: wish.waitingCount,
+    wishWaitingAmount: wish.waitingAmount,
   }
+}
+
+
+export type WishSummary = {
+  readyCount: number
+  waitingCount: number
+  waitingAmount: number
+}
+
+const fetchWishSummary = async (
+  userId: string,
+  today: string,
+): Promise<WishSummary> => {
+  const [row] = await getDb()
+    .select({
+      waitingCount: sql<number>`COUNT(*)::int`,
+      readyCount: sql<number>`COUNT(*) FILTER (WHERE ${wishItems.readyOn} <= ${today})::int`,
+      waitingAmount: sql<number>`COALESCE(SUM(${wishItems.amount}), 0)::bigint`,
+    })
+    .from(wishItems)
+    .where(and(eq(wishItems.userId, userId), eq(wishItems.status, 'waiting')))
+
+  return {
+    readyCount: row?.readyCount ?? 0,
+    waitingCount: row?.waitingCount ?? 0,
+    waitingAmount: Number(row?.waitingAmount ?? 0),
+  }
+}
+
+/** Setahun ke belakang sudah cukup untuk membaca ritme tanpa memuat semuanya. */
+const CADENCE_LOOKBACK_DAYS = 365
+
+const fetchIncomeEvents = async (userId: string, today: string) => {
+  const rows = await getDb()
+    .select({
+      dateLocal: transactions.dateLocal,
+      amount: sql<number>`SUM(${transactions.amount})::bigint`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.kind, 'IN'),
+        gte(transactions.dateLocal, addDays(today, -CADENCE_LOOKBACK_DAYS)),
+      ),
+    )
+    .groupBy(transactions.dateLocal)
+    .orderBy(transactions.dateLocal)
+
+  return rows.map((row) => ({ dateLocal: row.dateLocal, amount: Number(row.amount) }))
+}
+
+/** Pengeluaran manual per hari dalam rentang, hanya hari yang ada catatannya. */
+const fetchDailySpend = async (userId: string, from: string, to: string) => {
+  const rows = await getDb()
+    .select({
+      dateLocal: transactions.dateLocal,
+      total: sql<number>`SUM(${transactions.amount})::bigint`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.kind, 'OUT'),
+        eq(transactions.source, 'manual'),
+        gte(transactions.dateLocal, from),
+        lte(transactions.dateLocal, to),
+      ),
+    )
+    .groupBy(transactions.dateLocal)
+
+  return new Map(rows.map((row) => [row.dateLocal, Number(row.total)]))
+}
+
+/** Jatah yang berlaku di tiap hari, diambil dari rekap yang sudah tersimpan. */
+const fetchLedgerAllowances = async (userId: string, from: string, to: string) => {
+  const rows = await getDb()
+    .select()
+    .from(dailyLedger)
+    .where(
+      and(
+        eq(dailyLedger.userId, userId),
+        gte(dailyLedger.dateLocal, from),
+        lte(dailyLedger.dateLocal, to),
+      ),
+    )
+
+  return new Map(
+    rows.map((row) => [row.dateLocal, Math.max(0, row.baseAllowance + row.carry)]),
+  )
+}
+
+export const RECENT_DAYS = 14
+
+/**
+ * Deret harian untuk grafik. Hari tanpa rekap memakai jatah yang berlaku
+ * sekarang sebagai perkiraan — lebih berguna daripada lubang di grafik.
+ */
+const buildRecentDays = (
+  today: string,
+  spendByDate: Map<string, number>,
+  allowedByDate: Map<string, number>,
+  fallbackAllowed: number,
+): DayPoint[] =>
+  Array.from({ length: RECENT_DAYS }, (_, offset) => {
+    const dateLocal = addDays(today, -(RECENT_DAYS - 1 - offset))
+    return {
+      dateLocal,
+      spent: spendByDate.get(dateLocal) ?? 0,
+      allowed: allowedByDate.get(dateLocal) ?? fallbackAllowed,
+    }
+  })
+
+/**
+ * Kurva pembakaran sejak pemasukan terakhir: kumulatif nyata versus garis
+ * rencana. Inilah bentuk visual dari "habis di minggu pertama".
+ */
+const buildBurn = (
+  today: string,
+  lastIncomeDate: string | null,
+  spendByDate: Map<string, number>,
+  plannedDaily: number,
+): BurnPoint[] => {
+  if (!lastIncomeDate) return []
+
+  const span = Math.min(daysBetween(lastIncomeDate, today), 90)
+  if (span < 0) return []
+
+  let cumulative = 0
+  return Array.from({ length: span + 1 }, (_, dayIndex) => {
+    const dateLocal = addDays(lastIncomeDate, dayIndex)
+    cumulative += spendByDate.get(dateLocal) ?? 0
+    return {
+      dateLocal,
+      dayIndex,
+      cumulative,
+      planned: plannedDaily * (dayIndex + 1),
+    }
+  })
 }
 
 const resolveAnchor = async (
@@ -283,9 +460,11 @@ export const getDailyState = async (user: CurrentUser): Promise<DailyState> => {
   const config = toSettings(user.settings)
   const today = todayIn(user.timezone)
 
-  const [liquidBalance, obligations] = await Promise.all([
+  const [liquidBalance, obligations, wish, incomeEvents] = await Promise.all([
     fetchLiquidBalance(user.id),
     fetchObligations(user.id, today, config.obligationHorizonDays),
+    fetchWishSummary(user.id, today),
+    fetchIncomeEvents(user.id, today),
   ])
 
   const funds = computeFunds({
@@ -294,15 +473,46 @@ export const getDailyState = async (user: CurrentUser): Promise<DailyState> => {
     settings: config,
   })
 
-  const [anchor, carry, spentToday, stats, lastMemory] = await Promise.all([
-    resolveAnchor(user.id, today, funds, config),
+  const cadence = analyzeIncome(incomeEvents, today)
+
+  // Jatah dibagi sepanjang jeda pemasukan yang benar-benar terjadi, bukan
+  // sepanjang angka bulat yang kebetulan jadi default.
+  const horizon = resolveHorizonDays(config, cadence)
+  const planning: Settings = { ...config, allowanceHorizonDays: horizon.days }
+
+  const [anchor, carry, stats, lastMemory] = await Promise.all([
+    resolveAnchor(user.id, today, funds, planning),
     resolveCarry(user.id, today),
-    fetchSpent(user.id, today, today),
-    fetchStats(user.id, today, obligations),
+    fetchStats(user.id, today, obligations, wish),
     fetchLastMemory(user.id),
   ])
 
+  // Rentang harian menutupi grafik 14 hari sekaligus siklus sejak pemasukan
+  // terakhir, jadi cukup satu query untuk keduanya.
+  const seriesStart = [
+    addDays(today, -(RECENT_DAYS - 1)),
+    cadence.lastDate ?? today,
+  ].sort()[0]
+
+  const [spendByDate, allowedByDate] = await Promise.all([
+    fetchDailySpend(user.id, seriesStart, today),
+    fetchLedgerAllowances(user.id, addDays(today, -(RECENT_DAYS - 1)), today),
+  ])
+
+  const spentToday = spendByDate.get(today) ?? 0
   const allowance = computeDailyAllowance(anchor, carry, spentToday)
+
+  const spentSinceIncome = cadence.lastDate
+    ? sumRange(spendByDate, cadence.lastDate, today)
+    : 0
+
+  const pace = computePace({
+    daysSinceIncome: cadence.daysSinceLast,
+    spentSinceIncome,
+    plannedDaily: anchor.baseAllowance,
+    available: funds.available,
+    cadence,
+  })
 
   await getDb()
     .insert(dailyLedger)
@@ -318,6 +528,22 @@ export const getDailyState = async (user: CurrentUser): Promise<DailyState> => {
       set: { baseAllowance: anchor.baseAllowance, carry, spent: spentToday },
     })
 
+  // Dihitung dari keadaan sebelum pemasukan hari ini, supaya pengguna melihat
+  // uang yang baru masuk langsung terpecah jadi bagian-bagian yang punya nama.
+  const incomePlan =
+    stats.incomeToday > 0
+      ? planIncome(
+          stats.incomeToday,
+          computeFunds({
+            liquidBalance: liquidBalance - stats.incomeToday,
+            scheduledObligations: obligations.scheduled,
+            settings: config,
+          }),
+          planning,
+          computeBaseAllowance,
+        )
+      : null
+
   const insight = computeInsight({
     today,
     timeBucket: timeBucketOf(hourIn(user.timezone)),
@@ -325,8 +551,37 @@ export const getDailyState = async (user: CurrentUser): Promise<DailyState> => {
     funds,
     allowance,
     stats,
+    pace,
+    cadence,
     lastMemory,
   })
 
-  return { today, funds, allowance, anchor, obligations, stats, insight }
+  return {
+    today,
+    funds,
+    allowance,
+    anchor,
+    obligations,
+    horizon,
+    stats,
+    insight,
+    cadence,
+    pace,
+    recentDays: buildRecentDays(today, spendByDate, allowedByDate, allowance.allowed),
+    burn: buildBurn(today, cadence.lastDate, spendByDate, anchor.baseAllowance),
+    incomePlan,
+  }
+}
+
+/** Total nilai peta harian dalam rentang tanggal, inklusif di kedua ujung. */
+const sumRange = (
+  byDate: Map<string, number>,
+  from: string,
+  to: string,
+): number => {
+  let total = 0
+  for (const [dateLocal, amount] of byDate) {
+    if (dateLocal >= from && dateLocal <= to) total += amount
+  }
+  return total
 }

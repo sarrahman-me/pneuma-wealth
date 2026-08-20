@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { computeInsight, shouldRecordMemory, timeBucketOf } from './insight'
 import { computeDailyAllowance, createAnchor } from './allowance'
 import { computeFunds } from './funds'
+import { analyzeIncome } from './cadence'
+import { computePace } from './pace'
 import { DEFAULT_SETTINGS, type Settings } from './types'
 import type { InsightInput, InsightStats, MemoryEntry } from './insight-types'
 
@@ -21,11 +23,27 @@ const stats = (overrides: Partial<InsightStats> = {}): InsightStats => ({
   daysWithTx7d: 3,
   discretionaryShare7d: 0.2,
   daysSinceIncome: 3,
+  incomeToday: 0,
   unpaidFixedCostCount: 0,
   unpaidFixedCostAmount: 0,
   daysToNextDue: null,
+  wishReadyCount: 0,
+  wishWaitingCount: 0,
+  wishWaitingAmount: 0,
   ...overrides,
 })
+
+/** Belum ada riwayat pemasukan, jadi laju dan ritme netral kecuali diminta lain. */
+const emptyCadence = analyzeIncome([], '2026-08-20')
+
+const calmPace = (funds: ReturnType<typeof computeFunds>, plannedDaily: number) =>
+  computePace({
+    daysSinceIncome: null,
+    spentSinceIncome: 0,
+    plannedDaily,
+    available: funds.available,
+    cadence: emptyCadence,
+  })
 
 const build = (
   liquidBalance: number,
@@ -46,6 +64,8 @@ const build = (
     funds,
     allowance: computeDailyAllowance(anchor, 0, spentToday),
     stats: stats(),
+    pace: calmPace(funds, anchor.baseAllowance),
+    cadence: emptyCadence,
     lastMemory: null,
     ...overrides,
   }
@@ -142,6 +162,48 @@ describe('prioritas aturan', () => {
   it('jatuh ke steady ketika semua tenang', () => {
     const input = build(10_000_000, 0, { stats: stats({ txCountToday: 1 }) })
     expect(computeInsight(input).ruleId).toBe('steady')
+  })
+
+  it('hari pemasukan menang di atas hampir semua hal', () => {
+    const input = build(10_000_000, 200_000, {
+      stats: stats({ incomeToday: 5_000_000, daysSinceIncome: 0 }),
+    })
+    expect(computeInsight(input).ruleId).toBe('fresh_income')
+  })
+
+  it('laju terlalu cepat muncul sebelum kelebihan belanja hari ini', () => {
+    const config = settings()
+    const funds = computeFunds({
+      liquidBalance: 10_000_000,
+      scheduledObligations: 0,
+      settings: config,
+    })
+    const anchor = createAnchor('2026-08-20', funds, config)
+    const input: InsightInput = {
+      ...build(10_000_000, 999_999, {}, config),
+      pace: computePace({
+        daysSinceIncome: 6,
+        spentSinceIncome: 3_000_000,
+        plannedDaily: anchor.baseAllowance,
+        available: funds.available,
+        cadence: emptyCadence,
+      }),
+    }
+    expect(computeInsight(input).ruleId).toBe('burning_too_fast')
+  })
+
+  it('keinginan yang lewat masa tunggu diangkat sebelum tagihan', () => {
+    const input = build(10_000_000, 0, {
+      stats: stats({
+        wishReadyCount: 1,
+        wishWaitingCount: 2,
+        wishWaitingAmount: 800_000,
+        unpaidFixedCostCount: 1,
+        unpaidFixedCostAmount: 500_000,
+        daysToNextDue: 2,
+      }),
+    })
+    expect(computeInsight(input).ruleId).toBe('wish_ready')
   })
 
   it('selalu menghasilkan langkah berikutnya yang terisi', () => {

@@ -9,9 +9,12 @@ import type { settings as settingsTable } from '@/lib/db/schema'
 export default function SettingsForm({
   settings,
   timezone,
+  suggestedBufferDays,
 }: {
   settings: typeof settingsTable.$inferSelect
   timezone: string
+  /** Saran dari jeda pemasukan yang benar-benar pernah terjadi. Null bila data belum cukup. */
+  suggestedBufferDays: number | null
 }) {
   const [state, formAction, pending] = useActionState(
     async (_prev: ActionResult | null, formData: FormData) => updateSettings(formData),
@@ -40,7 +43,30 @@ export default function SettingsForm({
               defaultValue={settings.bufferDays}
               required
             />
-            <span className="helper-text">Berapa hari hidup yang ingin dijamin.</span>
+            <span className="helper-text">
+              Berapa hari hidup yang ingin dijamin.
+              {suggestedBufferDays !== null && suggestedBufferDays !== settings.bufferDays
+                ? ` Riwayat pemasukanmu menyarankan ${suggestedBufferDays} hari.`
+                : ''}
+            </span>
+          </label>
+
+          <label>
+            Porsi pengisian penyangga (%)
+            <input
+              name="buffer_fill_percent"
+              inputMode="numeric"
+              type="number"
+              min={0}
+              max={90}
+              defaultValue={settings.bufferFillPercent}
+              required
+            />
+            <span className="helper-text">
+              Selama penyangga belum penuh, sekian persen uangmu mengisi penyangga dan
+              sisanya tetap jadi jatah harian. Makin tinggi, makin cepat aman tapi makin
+              ketat sehari-hari.
+            </span>
           </label>
 
           <label>
@@ -72,13 +98,20 @@ export default function SettingsForm({
               defaultValue={settings.allowanceHorizonDays}
               required
             />
-            <span className="helper-text">Dana fleksibel dibagi sepanjang rentang ini.</span>
+            <span className="helper-text">
+              Dana fleksibel dibagi sepanjang rentang ini. Kalau jeda pemasukanmu ternyata
+              lebih panjang, aplikasi memakai jeda itu — angka ini jadi batas bawahnya, tidak
+              pernah dipersempit.
+            </span>
           </label>
 
           <label>
             Jatah minimum
             <MoneyInput name="allowance_min" defaultValue={settings.allowanceMin} required />
-            <span className="helper-text">Berlaku hanya setelah penyangga penuh.</span>
+            <span className="helper-text">
+              Jatah tidak turun di bawah angka ini — kecuali uangmu memang tidak sanggup
+              menopangnya sepanjang horizon.
+            </span>
           </label>
 
           <label>

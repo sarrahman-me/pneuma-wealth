@@ -5,7 +5,9 @@ import {
   computeDailyAllowance,
   createAnchor,
   needsReanchor,
+  resolveHorizonDays,
 } from './allowance'
+import { analyzeIncome } from './cadence'
 import { computeFunds } from './funds'
 import { DEFAULT_SETTINGS, type Funds, type Settings } from './types'
 
@@ -28,13 +30,20 @@ describe('computeBaseAllowance', () => {
     expect(computeBaseAllowance(fundsWith(6_000_000), settings())).toBe(100_000)
   })
 
-  it('nol ketika penyangga belum penuh', () => {
-    expect(computeBaseAllowance(fundsWith(2_000_000), settings())).toBe(0)
+  it('tetap memberi jatah ketika penyangga belum penuh', () => {
+    // fleksibel 900rb / 30 = 30rb. Dulu ini nol, dan itu kebuntuannya.
+    expect(computeBaseAllowance(fundsWith(2_000_000), settings())).toBe(30_000)
   })
 
-  it('mengabaikan allowanceMin selama penyangga belum penuh', () => {
+  it('menerapkan allowanceMin walau penyangga belum penuh', () => {
     const config = settings({ allowanceMin: 50_000 })
-    expect(computeBaseAllowance(fundsWith(2_000_000, config), config)).toBe(0)
+    expect(computeBaseAllowance(fundsWith(2_000_000, config), config)).toBe(50_000)
+  })
+
+  it('allowanceMin tidak pernah melebihi yang sanggup ditopang', () => {
+    const config = settings({ allowanceMin: 500_000 })
+    // uang tersedia 600rb / 30 hari = 20rb, jadi batas bawah tidak bisa dipenuhi
+    expect(computeBaseAllowance(fundsWith(600_000, config), config)).toBe(20_000)
   })
 
   it('menerapkan allowanceMin setelah penyangga penuh', () => {
@@ -131,5 +140,53 @@ describe('computeDailyAllowance', () => {
     const senin = computeDailyAllowance(anchor, 0, 0)
     const rabu = computeDailyAllowance(anchor, 0, 80_000)
     expect(rabu.base).toBe(senin.base)
+  })
+})
+
+describe('resolveHorizonDays', () => {
+  const cadenceOf = (dates: string[]) =>
+    analyzeIncome(
+      dates.map((dateLocal) => ({ dateLocal, amount: 5_000_000 })),
+      '2026-08-20',
+    )
+
+  // Jeda 29, 42, 25 hari -> jeda tipikal 42.
+  const longGaps = cadenceOf(['2026-05-10', '2026-06-08', '2026-07-20', '2026-08-14'])
+
+  it('memakai jeda pemasukan nyata saat lebih panjang dari setelan', () => {
+    expect(resolveHorizonDays(settings({ allowanceHorizonDays: 30 }), longGaps)).toEqual({
+      days: 42,
+      fromCadence: true,
+    })
+  })
+
+  it('tidak pernah memperpendek horizon yang disetel pengguna', () => {
+    // Batas bawah saran adalah 14 hari, jadi setelan 30 hari tetap menang.
+    const shortGaps = cadenceOf([
+      '2026-08-01',
+      '2026-08-08',
+      '2026-08-15',
+      '2026-08-19',
+    ])
+    expect(resolveHorizonDays(settings({ allowanceHorizonDays: 30 }), shortGaps)).toEqual({
+      days: 30,
+      fromCadence: false,
+    })
+  })
+
+  it('bertahan pada setelan manual selama ritmenya belum terbaca', () => {
+    expect(resolveHorizonDays(settings({ allowanceHorizonDays: 30 }), null)).toEqual({
+      days: 30,
+      fromCadence: false,
+    })
+  })
+
+  it('membagi jatah lebih kecil ketika horizonnya memanjang', () => {
+    const config = settings()
+    const funds = fundsWith(9_000_000, config)
+    const stretched = { ...config, allowanceHorizonDays: 42 }
+    expect(computeBaseAllowance(funds, stretched)).toBeLessThan(
+      computeBaseAllowance(funds, config),
+    )
   })
 })

@@ -16,9 +16,19 @@ export type Settings = {
   dailyLivingCost: number
   /** Berapa hari hidup yang ingin dijamin oleh dana penyangga. */
   bufferDays: number
+  /**
+   * Porsi uang tersedia yang diarahkan ke penyangga selama penyangga belum
+   * penuh, dalam persen (0–100). Sisanya tetap boleh dibelanjakan.
+   *
+   * Ini yang membuat penyangga terisi bertahap alih-alih jadi gerbang: dengan
+   * pemasukan tak menentu, menunggu penyangga penuh sebelum boleh belanja
+   * berarti jatah harian Rp 0 selama berbulan-bulan, dan aturan yang mustahil
+   * dipatuhi akan ditinggalkan.
+   */
+  bufferFillPercent: number
   /** Horizon pembagian dana fleksibel jadi jatah harian. */
   allowanceHorizonDays: number
-  /** Batas bawah jatah harian, berlaku hanya ketika penyangga sudah penuh. */
+  /** Batas bawah jatah harian, tidak pernah melebihi yang sanggup ditopang. */
   allowanceMin: number
   /** Batas atas jatah harian, supaya angka tidak melonjak setelah pemasukan besar. */
   allowanceMax: number
@@ -29,6 +39,7 @@ export type Settings = {
 export const DEFAULT_SETTINGS: Settings = {
   dailyLivingCost: 0,
   bufferDays: 30,
+  bufferFillPercent: 55,
   allowanceHorizonDays: 30,
   allowanceMin: 0,
   allowanceMax: 500_000,
@@ -52,12 +63,20 @@ export type Funds = {
   /** Uang yang benar-benar bebas dipakai setelah kewajiban dipotong di depan. */
   available: number
   bufferTarget: number
-  /** Bagian `available` yang sedang mengisi penyangga. */
+  /**
+   * Kemajuan menuju penyangga penuh: seluruh uang tersedia yang belum
+   * dibelanjakan, dibatasi target. Ini yang menentukan rasa aman.
+   */
   bufferBalance: number
+  /**
+   * Bagian uang tersedia yang sedang ditahan, yaitu yang belum diizinkan
+   * dibelanjakan. `reserved + flexible === max(0, available)`.
+   */
+  reserved: number
   bufferFilled: boolean
   /** 0..1, atau null bila target penyangga belum diatur. */
   bufferRatio: number | null
-  /** Sisa `available` setelah penyangga penuh — inilah yang dibagi jadi jatah. */
+  /** Bagian `available` yang boleh dibelanjakan — inilah yang dibagi jadi jatah. */
   flexible: number
   /** Berapa hari bertahan tanpa pemasukan baru, null bila biaya hidup belum diisi. */
   runwayDays: number | null

@@ -15,6 +15,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => (
         <nav className="nav">
           <Link href="/">Beranda</Link>
           <Link href="/history">Riwayat</Link>
+          <Link href="/wishlist">Keinginan</Link>
           <Link href="/fixed-costs">Biaya Tetap</Link>
           <Link href="/summary">Ringkasan</Link>
           <Link href="/rules">Aturan</Link>

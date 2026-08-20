@@ -29,6 +29,17 @@ Aplikasi web Next.js (App Router) dengan Postgres via Drizzle.
   server action wajib memverifikasi kepemilikan sebelum menulis.
 - Pengeluaran `source = 'fixed_cost'` tidak boleh ikut memakan jatah harian;
   kewajiban sudah dipotong lewat `scheduledObligations`.
+- `reserved + flexible === max(0, available)`. Jangan menambahkan lapis baru
+  yang mengklaim rupiah yang sama dua kali; `bufferBalance` sengaja mengukur hal
+  lain (kemajuan menuju aman), bukan bagian dari pembagian itu.
+- Penyesuaian horizon dari ritme pemasukan hanya boleh memperpanjang, tidak
+  pernah memperpendek — supaya penyesuaian otomatis tidak pernah membuat jatah
+  lebih longgar dari yang pengguna izinkan.
+- Masa tunggu keinginan dibekukan di `ready_on` saat dicatat. Jangan menghitung
+  ulang saat dibaca; jatah yang naik akan memperpendek tunggu yang sedang
+  berjalan, dan itu persis celah yang dicari dorongan impulsif.
+- Nada coaching tetap tenang dan selalu berakhir dengan satu langkah konkret.
+  Peringatan yang menghakimi membuat aplikasi ini ditinggalkan.
 
 ## Commit
 

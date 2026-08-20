@@ -10,7 +10,8 @@
  * adalah langkah terpisah yang dipanggil secara sadar oleh pemanggil.
  */
 
-import { formatRupiah } from './format'
+import { formatMultiplier, formatRupiah } from './format'
+import { isBurningTooFast } from './pace'
 import type {
   CoachingInsight,
   InsightInput,
@@ -125,6 +126,25 @@ const RULES: Rule[] = [
     }),
   },
   {
+    id: 'fresh_income',
+    when: ({ stats }) => stats.incomeToday > 0,
+    // Kartu ritual di atas sudah menyebutkan jumlah dan pembagiannya, jadi di
+    // sini sengaja tidak diulang. Yang tersisa untuk dikatakan adalah apa yang
+    // biasanya terjadi setelah hari ini.
+    build: ({ stats, funds, allowance, cadence }) => ({
+      statusTitle: 'Minggu pertama yang menentukan sisa siklus.',
+      bullets: [
+        cadence.typicalGap !== null
+          ? `Uang ini harus bertahan sekitar ${cadence.typicalGap} hari, sampai pemasukan berikutnya.`
+          : 'Belum cukup data untuk menebak kapan pemasukan berikutnya datang.',
+        `Uang tersedia ${formatRupiah(funds.available)} setelah tagihan disisihkan.`,
+      ],
+      nextStep: `Hari ini cukup ${formatRupiah(allowance.allowed)} — sama seperti hari-hari berikutnya.`,
+      tone: 'calm',
+      keyNumbers: [stats.incomeToday, funds.available, allowance.allowed],
+    }),
+  },
+  {
     id: 'runway_critical',
     when: ({ funds }) => funds.runwayDays !== null && funds.runwayDays <= RUNWAY_CRITICAL_DAYS,
     build: ({ funds }) => ({
@@ -136,6 +156,24 @@ const RULES: Rule[] = [
       nextStep: 'Prioritaskan kebutuhan inti hari ini, dan kejar satu sumber pemasukan.',
       tone: 'alert',
       keyNumbers: [funds.runwayDays ?? 0, funds.available],
+    }),
+  },
+  {
+    id: 'burning_too_fast',
+    when: ({ pace }) => isBurningTooFast(pace),
+    build: ({ pace, allowance }) => ({
+      statusTitle: `Laju belanjamu ${formatMultiplier(pace.paceRatio ?? 1)} lebih cepat dari rencana.`,
+      bullets: [
+        `${pace.daysElapsed} hari sejak pemasukan terakhir, terpakai ${formatRupiah(pace.spentSinceIncome)} dari rencana ${formatRupiah(pace.plannedSoFar ?? 0)}.`,
+        pace.shortfallDays !== null && pace.shortfallDays > 0
+          ? `Dengan laju ini uang habis ${pace.daysUntilEmpty} hari lagi — sekitar ${pace.shortfallDays} hari sebelum pemasukan berikutnya biasanya datang.`
+          : pace.daysUntilEmpty !== null
+            ? `Dengan laju ini uang habis ${pace.daysUntilEmpty} hari lagi.`
+            : 'Laju ini belum bisa diproyeksikan ke depan.',
+      ],
+      nextStep: `Kembali ke ${formatRupiah(allowance.allowed)} per hari mulai sekarang, sebelum sisa siklus yang menanggungnya.`,
+      tone: 'alert',
+      keyNumbers: [pace.spentSinceIncome, pace.plannedSoFar ?? 0, pace.daysUntilEmpty ?? 0],
     }),
   },
   {
@@ -153,6 +191,20 @@ const RULES: Rule[] = [
           : 'Hentikan pengeluaran tambahan sampai besok.',
       tone: 'alert',
       keyNumbers: [allowance.spent, allowance.allowed, allowance.remaining],
+    }),
+  },
+  {
+    id: 'wish_ready',
+    when: ({ stats }) => stats.wishReadyCount > 0,
+    build: ({ stats }) => ({
+      statusTitle: `${stats.wishReadyCount} keinginan sudah lewat masa tunggu.`,
+      bullets: [
+        `Total yang sedang ditahan ${formatRupiah(stats.wishWaitingAmount)}.`,
+        'Kalau masih ingin setelah menunggu, itu bukan dorongan sesaat.',
+      ],
+      nextStep: 'Putuskan di halaman Keinginan: beli, atau lepaskan.',
+      tone: 'calm',
+      keyNumbers: [stats.wishReadyCount, stats.wishWaitingAmount],
     }),
   },
   {
@@ -178,13 +230,13 @@ const RULES: Rule[] = [
   {
     id: 'buffer_low',
     when: ({ funds }) => funds.mode === 'tight',
-    build: ({ funds, allowance }) => ({
+    build: ({ funds, allowance, settings }) => ({
       statusTitle: `Penyangga baru terisi ${Math.round((funds.bufferRatio ?? 0) * 100)}%.`,
       bullets: [
         `Terkumpul ${formatRupiah(funds.bufferBalance)} dari target ${formatRupiah(funds.bufferTarget)}.`,
-        funds.runwayDays !== null
-          ? `Bertahan ${funds.runwayDays} hari tanpa pemasukan baru.`
-          : 'Runway belum bisa dihitung.',
+        // Penyangga tidak lagi jadi gerbang, jadi katakan apa adanya: jatah
+        // tetap ada, hanya lebih kecil selama penyangga masih diisi.
+        `${settings.bufferFillPercent}% dari uangmu sedang mengisi penyangga, sisanya jadi jatah harian.`,
       ],
       nextStep: `Jaga pengeluaran hari ini di bawah ${formatRupiah(allowance.allowed)}.`,
       tone: 'alert',

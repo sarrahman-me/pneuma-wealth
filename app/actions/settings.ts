@@ -21,6 +21,10 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
 
     const dailyLivingCost = positiveInt(formData.get('daily_living_cost'), 'Biaya hidup harian')
     const bufferDays = positiveInt(formData.get('buffer_days'), 'Hari penyangga')
+    const bufferFillPercent = positiveInt(
+      formData.get('buffer_fill_percent'),
+      'Porsi pengisian penyangga',
+    )
     const allowanceHorizonDays = positiveInt(
       formData.get('allowance_horizon_days'),
       'Horizon jatah',
@@ -30,6 +34,10 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
 
     if (bufferDays < 1) throw new Error('Hari penyangga minimal 1.')
     if (allowanceHorizonDays < 1) throw new Error('Horizon jatah minimal 1.')
+    // 100% berarti jatah harian nol lagi — persis kebuntuan yang mau dihindari.
+    if (bufferFillPercent > 90) {
+      throw new Error('Porsi pengisian penyangga maksimal 90%, supaya jatah harian tetap ada.')
+    }
     if (allowanceMin > allowanceMax) {
       throw new Error('Jatah minimum tidak boleh melebihi jatah maksimum.')
     }
@@ -39,6 +47,7 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
       .set({
         dailyLivingCost,
         bufferDays,
+        bufferFillPercent,
         allowanceHorizonDays,
         allowanceMin,
         allowanceMax,

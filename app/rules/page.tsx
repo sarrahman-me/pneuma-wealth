@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import SettingsForm from './SettingsForm'
 import { getCurrentUser } from '@/lib/server/user'
+import { getDailyState } from '@/lib/server/state'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,8 @@ export default async function RulesPage() {
     )
   }
 
+  const { cadence } = await getDailyState(user)
+
   return (
     <main>
       <h1>Aturan</h1>
@@ -24,7 +27,11 @@ export default async function RulesPage() {
         Dua kelompok angka yang sengaja dipisah: yang menentukan rasa aman, dan yang menentukan
         jatah belanja.
       </p>
-      <SettingsForm settings={user.settings} timezone={user.timezone} />
+      <SettingsForm
+        settings={user.settings}
+        timezone={user.timezone}
+        suggestedBufferDays={cadence.suggestedBufferDays}
+      />
     </main>
   )
 }

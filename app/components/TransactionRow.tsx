@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { deleteTransaction, type ActionResult } from '@/app/actions/transactions'
-import { formatRupiah } from '@/lib/core/format'
+import { formatRupiah, formatShortDate } from '@/lib/core/format'
 
 export type TransactionView = {
   id: string
@@ -27,7 +27,7 @@ export default function TransactionRow({
   )
 
   const meta = [
-    showDate ? transaction.dateLocal : null,
+    showDate ? formatShortDate(transaction.dateLocal) : null,
     transaction.categoryName,
     transaction.source === 'fixed_cost' ? 'Biaya tetap' : null,
   ]

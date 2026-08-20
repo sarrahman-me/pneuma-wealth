@@ -15,23 +15,53 @@ Uangmu dipilah berlapis, dan tiap lapis punya alasan:
 saldo likuid              saldo akun harian (tabungan tidak termasuk)
 − kewajiban terjadwal     tagihan belum lunas yang jatuh tempo dalam horizon
 = uang tersedia           yang benar-benar bebas kamu atur
-− dana penyangga          biaya hidup harian × target hari penyangga
-= dana fleksibel          dibagi sepanjang horizon jatah → jatah harian
+  ├─ ditahan              sebagian mengisi dana penyangga
+  └─ boleh dibelanjakan   dibagi sepanjang jeda pemasukan → jatah harian
 ```
 
-Tiga keputusan yang membedakannya dari aplikasi pencatat biasa:
+Keputusan yang membedakannya dari aplikasi pencatat biasa:
 
 **Kewajiban dipotong di depan.** Sewa yang belum dibayar tidak pernah tampil
 sebagai uang bebas. Konsekuensinya, saat kamu membayarnya, jatah harianmu tidak
 ikut jatuh — uangnya memang sudah disisihkan sejak awal.
 
+**Penyangga diisi bertahap, bukan jadi gerbang.** Sebagian uang tersedia (lihat
+`bufferFillPercent`) mengisi penyangga dan sisanya tetap boleh dibelanjakan.
+Menunggu penyangga penuh sebelum boleh belanja berarti jatah harian Rp 0 selama
+berbulan-bulan — aturan yang mustahil dipatuhi akan ditinggalkan.
+
+**Jatah dibagi sepanjang jeda pemasukan yang nyata.** Membagi uang sepanjang 30
+hari padahal pemasukan datang tiap 42 hari adalah penyebab langsung kehabisan
+uang di tengah jalan. Kalau riwayat menunjukkan jeda yang lebih panjang dari
+setelan manual, jeda itu yang dipakai. Penyesuaiannya satu arah: hanya boleh
+memperpanjang.
+
 **Jatah harian dikunci, bukan dihitung ulang tiap hari.** Angkanya ditetapkan
-per minggu dan hanya berubah kalau seminggu berlalu atau dana fleksibel berubah
-besar (≥20%). Angka yang bergoyang tiap hari tidak bisa dijadikan pegangan.
+per minggu dan hanya berubah kalau seminggu berlalu atau dana yang boleh
+dibelanjakan berubah besar (≥20%). Angka yang bergoyang tiap hari tidak bisa
+dijadikan pegangan.
 
 **Sisa dan kelebihan terbawa, tapi dibatasi.** Sisa hari ini menambah jatah
 besok maksimal 1× jatah; kelebihan memotong jatah besok maksimal 0,5×. Hemat
 terasa hasilnya, boros ada konsekuensinya, tapi tidak ada spiral.
+
+## Tiga momen yang ditangani
+
+Pencatatan transaksi hanya mendokumentasikan uang yang sudah keluar — emosinya
+selalu terlambat. Tiga tempat aplikasi ini bicara lebih awal:
+
+**Hari uang masuk.** Pemasukan langsung dipecah jadi bagian-bagian yang punya
+nama — menutup tagihan, mengisi penyangga, sisanya jatah harian — sebelum sempat
+terasa seperti uang bebas seluruhnya (`lib/core/income.ts`).
+
+**Saat laju terlalu cepat.** Pengeluaran kumulatif sejak pemasukan terakhir
+dibandingkan dengan rencana. Kalau lajunya ≥1,5× rencana, aplikasi menyebutkan
+kapan uangnya akan habis dan berapa hari sebelum pemasukan berikutnya biasanya
+datang (`lib/core/pace.ts`).
+
+**Sebelum membeli.** Keinginan dicatat lebih dulu dan ditahan 1–7 hari,
+tergantung besarnya dibanding jatah harian. Harganya ditampilkan dalam hari
+hidup, bukan hanya rupiah (`lib/core/wish.ts`).
 
 ## Coaching
 
@@ -43,12 +73,17 @@ Fungsinya murni: tidak menyentuh database, tidak punya efek samping. Pencatatan
 "memory" antar hari adalah langkah terpisah, jadi sekadar me-refresh halaman
 tidak mencemari riwayat.
 
+Nadanya sengaja tenang. Peringatan yang menghakimi setelah uang habis hanya
+menghasilkan rasa bersalah, dan rasa bersalah membuat orang berhenti membuka
+aplikasinya.
+
 ## Arsitektur
 
 ```
 Next.js App Router (server components + server actions)
         |
 lib/core/     logika murni, tanpa I/O, teruji unit test
+              funds · allowance · cadence · pace · income · wish · insight
 lib/server/   perakitan state, query, auth
         |
 Drizzle ORM → Neon Postgres

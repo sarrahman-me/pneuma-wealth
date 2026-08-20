@@ -32,6 +32,7 @@ export const accountKind = pgEnum('account_kind', ['spendable', 'savings'])
 export const categoryNature = pgEnum('category_nature', ['essential', 'discretionary'])
 export const recurrence = pgEnum('recurrence', ['weekly', 'monthly', 'yearly'])
 export const coachMode = pgEnum('coach_mode', ['calm', 'watchful', 'tight'])
+export const wishStatus = pgEnum('wish_status', ['waiting', 'bought', 'released'])
 
 const money = (name: string) => bigint(name, { mode: 'number' })
 
@@ -53,6 +54,8 @@ export const settings = pgTable('settings', {
   /** Biaya bertahan hidup per hari — untuk penyangga dan runway, bukan jatah belanja. */
   dailyLivingCost: money('daily_living_cost').notNull().default(0),
   bufferDays: integer('buffer_days').notNull().default(30),
+  /** Persen uang tersedia yang mengisi penyangga selama penyangga belum penuh. */
+  bufferFillPercent: integer('buffer_fill_percent').notNull().default(55),
   allowanceHorizonDays: integer('allowance_horizon_days').notNull().default(30),
   allowanceMin: money('allowance_min').notNull().default(0),
   allowanceMax: money('allowance_max').notNull().default(500000),
@@ -224,12 +227,45 @@ export const coachingMemory = pgTable(
   (table) => [index('coaching_memory_user_date_idx').on(table.userId, table.dateLocal)],
 )
 
+
+/**
+ * Keinginan yang sedang ditahan.
+ *
+ * Dicatat sebelum uangnya keluar, lalu ditahan sampai `ready_on`. Ini satu-
+ * satunya tempat aplikasi ikut campur sebelum pembelian terjadi; sisanya hanya
+ * mencatat yang sudah lewat.
+ */
+export const wishItems = pgTable(
+  'wish_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    amount: money('amount').notNull(),
+    createdOn: date('created_on').notNull(),
+    /** Tanggal paling awal keinginan ini boleh diputuskan. */
+    readyOn: date('ready_on').notNull(),
+    status: wishStatus('status').notNull().default('waiting'),
+    note: text('note'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    /** Transaksi yang lahir kalau keinginan ini jadi dibeli. */
+    transactionId: uuid('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('wish_items_user_status_idx').on(table.userId, table.status)],
+)
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   settings: one(settings, { fields: [users.id], references: [settings.userId] }),
   accounts: many(accounts),
   categories: many(categories),
   transactions: many(transactions),
   fixedCosts: many(fixedCosts),
+  wishItems: many(wishItems),
 }))
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -257,6 +293,14 @@ export const fixedCostPaymentsRelations = relations(fixedCostPayments, ({ one })
   }),
   transaction: one(transactions, {
     fields: [fixedCostPayments.transactionId],
+    references: [transactions.id],
+  }),
+}))
+
+export const wishItemsRelations = relations(wishItems, ({ one }) => ({
+  user: one(users, { fields: [wishItems.userId], references: [users.id] }),
+  transaction: one(transactions, {
+    fields: [wishItems.transactionId],
     references: [transactions.id],
   }),
 }))

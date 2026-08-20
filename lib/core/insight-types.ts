@@ -1,3 +1,5 @@
+import type { IncomeCadence } from './cadence'
+import type { Pace } from './pace'
 import type { CoachMode, DailyAllowance, Funds, LocalDate, Settings } from './types'
 
 export type Tone = 'calm' | 'alert'
@@ -14,10 +16,16 @@ export type InsightStats = {
   discretionaryShare7d: number | null
   /** Hari sejak pemasukan terakhir. Null bila belum pernah ada pemasukan. */
   daysSinceIncome: number | null
+  /** Total pemasukan yang tercatat hari ini. */
+  incomeToday: number
   unpaidFixedCostCount: number
   unpaidFixedCostAmount: number
   /** Hari menuju biaya tetap terdekat yang belum dibayar. Null bila tidak ada. */
   daysToNextDue: number | null
+  /** Keinginan yang masa tunggunya sudah habis dan menunggu diputuskan. */
+  wishReadyCount: number
+  wishWaitingCount: number
+  wishWaitingAmount: number
 }
 
 export type MemoryEntry = {
@@ -34,6 +42,8 @@ export type InsightInput = {
   funds: Funds
   allowance: DailyAllowance
   stats: InsightStats
+  pace: Pace
+  cadence: IncomeCadence
   lastMemory: MemoryEntry | null
 }
 
