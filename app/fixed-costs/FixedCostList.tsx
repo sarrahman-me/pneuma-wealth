@@ -8,6 +8,7 @@ import {
   markFixedCostUnpaid,
 } from '@/app/actions/fixed-costs'
 import type { ActionResult } from '@/app/actions/transactions'
+import MoneyInput from '@/app/components/MoneyInput'
 import { formatRupiah } from '@/lib/core/format'
 
 export type FixedCostView = {
@@ -90,7 +91,7 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
           </label>
           <label>
             Jumlah
-            <input name="amount" inputMode="numeric" placeholder="0" required />
+            <MoneyInput name="amount" required />
           </label>
           <label>
             Tanggal jatuh tempo

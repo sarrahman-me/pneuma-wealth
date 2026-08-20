@@ -6,3 +6,13 @@ export const formatRupiah = (value: number): string => {
 }
 
 export const formatDays = (days: number): string => `${days} hari`
+
+/**
+ * Format untuk ditulis di dalam field input: berprefiks "Rp" dan
+ * bertitik ribuan, tapi kosong saat pengguna belum mengetik apa pun.
+ */
+export const formatRupiahInput = (raw: string): string => {
+  const digits = raw.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '')
+  if (digits.length === 0) return ''
+  return `Rp ${new Intl.NumberFormat('id-ID').format(Number(digits))}`
+}

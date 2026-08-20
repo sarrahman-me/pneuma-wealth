@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { addTransaction, type ActionResult } from '@/app/actions/transactions'
+import MoneyInput from './MoneyInput'
 
 type Option = { id: string; name: string }
 
@@ -15,6 +16,9 @@ export default function QuickEntry({
   today: string
 }) {
   const [kind, setKind] = useState<'OUT' | 'IN'>('OUT')
+  // Field uang terkendali, jadi form.reset() saja tidak cukup: kuncinya diganti
+  // supaya MoneyInput dipasang ulang dalam keadaan kosong.
+  const [resetKey, setResetKey] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
 
   const [state, formAction, pending] = useActionState(
@@ -25,6 +29,7 @@ export default function QuickEntry({
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset()
+      setResetKey((previous) => previous + 1)
     }
   }, [state])
 
@@ -53,13 +58,7 @@ export default function QuickEntry({
         <div className="form-grid">
           <label>
             Jumlah
-            <input
-              className="amount-input"
-              name="amount"
-              inputMode="numeric"
-              placeholder="0"
-              required
-            />
+            <MoneyInput key={resetKey} className="amount-input" name="amount" required />
           </label>
 
           <label>

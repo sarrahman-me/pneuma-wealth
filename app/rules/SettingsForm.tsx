@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { updateSettings } from '@/app/actions/settings'
+import MoneyInput from '@/app/components/MoneyInput'
 import type { ActionResult } from '@/app/actions/transactions'
 import type { settings as settingsTable } from '@/lib/db/schema'
 
@@ -27,12 +28,7 @@ export default function SettingsForm({
         <div className="form-grid">
           <label>
             Biaya hidup harian
-            <input
-              name="daily_living_cost"
-              inputMode="numeric"
-              defaultValue={settings.dailyLivingCost}
-              required
-            />
+            <MoneyInput name="daily_living_cost" defaultValue={settings.dailyLivingCost} required />
             <span className="helper-text">Perkiraan kasar biaya bertahan hidup per hari.</span>
           </label>
 
@@ -81,23 +77,13 @@ export default function SettingsForm({
 
           <label>
             Jatah minimum
-            <input
-              name="allowance_min"
-              inputMode="numeric"
-              defaultValue={settings.allowanceMin}
-              required
-            />
+            <MoneyInput name="allowance_min" defaultValue={settings.allowanceMin} required />
             <span className="helper-text">Berlaku hanya setelah penyangga penuh.</span>
           </label>
 
           <label>
             Jatah maksimum
-            <input
-              name="allowance_max"
-              inputMode="numeric"
-              defaultValue={settings.allowanceMax}
-              required
-            />
+            <MoneyInput name="allowance_max" defaultValue={settings.allowanceMax} required />
             <span className="helper-text">Menahan lonjakan setelah pemasukan besar.</span>
           </label>
 
