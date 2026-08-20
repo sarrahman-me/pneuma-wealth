@@ -10,6 +10,11 @@ Aplikasi web Next.js (App Router) dengan Postgres via Drizzle.
 - `lib/server/` — perakitan state, query database, auth. Ditandai `server-only`.
 - `lib/db/` — skema Drizzle, klien, migrasi ter-versioned.
 - `app/` — halaman dan komponen; `app/actions/` berisi server actions.
+- `public/sw.js` — service worker. Boleh menyimpan berkas statis saja; respons
+  halaman dan API tidak pernah disimpan karena cache-nya dipakai bersama semua
+  profil peramban di perangkat itu.
+- `scripts/generate-icons.py` — sumber kebenaran ikon PWA. Ubah di sini, lalu
+  jalankan ulang; jangan menyunting berkas PNG-nya langsung.
 
 ## Perintah
 
@@ -38,6 +43,9 @@ Aplikasi web Next.js (App Router) dengan Postgres via Drizzle.
 - Masa tunggu keinginan dibekukan di `ready_on` saat dicatat. Jangan menghitung
   ulang saat dibaca; jatah yang naik akan memperpendek tunggu yang sedang
   berjalan, dan itu persis celah yang dicari dorongan impulsif.
+- Tata letak baru harus diuji pada lebar 375px lebih dulu. Sasaran sentuh
+  minimal 44px, dan `font-size` field isian tidak boleh turun di bawah 16px —
+  di bawah itu Safari iOS memperbesar layar sendiri saat field disentuh.
 - Nada coaching tetap tenang dan selalu berakhir dengan satu langkah konkret.
   Peringatan yang menghakimi membuat aplikasi ini ditinggalkan.
 

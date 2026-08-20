@@ -85,6 +85,28 @@ angka dan grafik, serta pembagian tugas antara pengguna dan aplikasi. Daftar
 periksa persiapannya membaca keadaan akun yang sedang dibuka, jadi pembaca tidak
 perlu menebak sudah sampai mana.
 
+## Di ponsel
+
+PNEUMA dipakai sambil berdiri di kasir, bukan di meja kerja, jadi tata letaknya
+diutamakan untuk layar kecil:
+
+- Lima tujuan yang paling sering dibuka duduk di bilah bawah, dalam jangkauan
+  ibu jari. Aturan dan Panduan tetap di kepala halaman karena keduanya dibuka
+  saat menyiapkan aplikasi, bukan saat mencatat.
+- Semua sasaran sentuh minimal 44px, dan field isian tepat 16px supaya Safari
+  iOS tidak memperbesar layar sendiri setiap kali field disentuh.
+- Jarak aman notch dan bilah gestur diambil dari `env(safe-area-inset-*)`.
+
+Aplikasi ini juga sebuah PWA dan bisa dipasang ke layar utama:
+
+- `app/manifest.ts` — manifest, ikon, dan pintasan.
+- `public/sw.js` — service worker. Yang disimpan **hanya** berkas statis dan
+  satu halaman `/offline`. Respons halaman dan API tidak pernah disimpan:
+  isinya angka keuangan satu pengguna, sementara cache service worker dipakai
+  bersama seluruh profil peramban di perangkat itu.
+- `scripts/generate-icons.py` — ikon digambar dari kode, jalankan ulang dengan
+  `python3 scripts/generate-icons.py` setelah mengubah bentuk atau warnanya.
+
 ## Arsitektur
 
 ```
@@ -115,6 +137,7 @@ bukan melayani data keuangan tanpa autentikasi.
 | Perintah | Fungsi |
 |---|---|
 | `npm run check` | lint + typecheck + test |
+| `npm run build` lalu `npm run start` | uji service worker; ia sengaja tidak aktif di `npm run dev` |
 | `npm run test` | unit test logika inti |
 | `npm run db:generate` | buat migrasi dari perubahan skema |
 | `npm run db:migrate` | terapkan migrasi |

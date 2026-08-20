@@ -96,20 +96,29 @@ body {
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
+/* Navigasi
+ *
+ * Kepala halaman memuat semua tujuan di layar lebar. Di ponsel, lima tujuan
+ * utama pindah ke bilah bawah (.tabbar) dan kepala halaman menyusut jadi merek
+ * plus tautan penyiapan.
+ */
 .nav {
   display: flex;
   gap: 18px;
   align-items: center;
   padding: 14px 20px;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-left: calc(20px + env(safe-area-inset-left));
+  padding-right: calc(20px + env(safe-area-inset-right));
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg-sunken) 85%, transparent);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
   z-index: 10;
-  overflow-x: auto;
 }
 
 .nav a {
@@ -122,6 +131,92 @@ body {
 
 .nav a:hover {
   text-decoration: underline;
+}
+
+.nav-brand {
+  letter-spacing: 2px;
+  font-size: 15px;
+}
+
+.nav-links,
+.nav-secondary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.nav-secondary {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.nav-secondary .nav-link {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Diikat ke .nav supaya menang atas `.nav a { text-decoration: none }`. */
+.nav .nav-link-active {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 2px;
+}
+
+.nav-secondary .nav-link-active {
+  color: var(--text);
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+}
+
+/* Bilah bawah (hanya ponsel) */
+.tabbar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-sunken) 94%, transparent);
+  backdrop-filter: blur(12px);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  /* 52px menjaga sasaran sentuh tetap di atas ambang 44px, termasuk saat
+     labelnya hanya satu baris pendek. */
+  min-height: 52px;
+  padding: 6px 2px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab:hover {
+  text-decoration: none;
+}
+
+.tab-active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--calm) 14%, transparent);
+}
+
+.tab-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  text-align: center;
 }
 
 main {
@@ -181,10 +276,12 @@ label {
 input,
 select {
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
-  font-size: 15px;
+  /* Tepat 16px: di bawah itu, Safari iOS otomatis memperbesar layar begitu
+     field disentuh, dan halaman tertinggal dalam keadaan ter-zoom. */
+  font-size: 16px;
   font-family: inherit;
   background: var(--bg-raised);
   color: var(--text);
@@ -231,6 +328,37 @@ button:active:not(:disabled) {
 
 .btn-quiet,
 button.secondary {
+  background: var(--bg-sunken);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+
+/* Tautan yang berperan sebagai tombol.
+ *
+ * Pada <button>, kelas .btn tidak menambah apa-apa — gaya tombol sudah melekat
+ * di elemennya. Pada <a>, tanpa aturan ini ajakan sepenting "Masuk" dan "Buka
+ * daftar keinginan" cuma jadi teks bergaris bawah setinggi satu baris, yang di
+ * layar sentuh terlalu kecil untuk dituju dengan ibu jari.
+ */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+a.btn:hover {
+  text-decoration: none;
+}
+
+a.btn.btn-quiet {
   background: var(--bg-sunken);
   color: var(--text);
   border: 1px solid var(--border-strong);
@@ -1150,8 +1278,37 @@ button.secondary {
 }
 
 @media (max-width: 760px) {
+  /* Tujuan utama pindah ke bilah bawah; kepala halaman tinggal merek dan
+     tautan penyiapan. */
+  .nav-links {
+    display: none;
+  }
+
+  .tabbar {
+    display: flex;
+    gap: 2px;
+  }
+
+  .nav {
+    gap: 12px;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .nav-secondary {
+    gap: 14px;
+  }
+
+  .nav-secondary .nav-link {
+    font-size: 14px;
+  }
+
   main {
-    padding: 24px 14px 56px;
+    /* Ruang bawah menampung bilah tab plus bilah gestur ponsel, supaya baris
+       terakhir tidak pernah tertutup. */
+    padding: 20px 14px calc(96px + env(safe-area-inset-bottom));
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
   }
 
   h1 {
@@ -1188,6 +1345,113 @@ button.secondary {
 
   .wish-cta .btn {
     width: 100%;
+  }
+
+  /* Sasaran sentuh: apa pun yang bisa ditekan harus setidaknya 44px, ukuran
+     ujung jari yang dipakai sebagai patokan aksesibilitas. */
+  button,
+  .btn,
+  .check-action {
+    min-height: 44px;
+  }
+
+  .pill {
+    padding: 11px 16px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Pilihan Pengeluaran/Pemasukan dibuat selebar layar: ini tombol pertama
+     yang disentuh setiap kali mencatat, jadi tidak boleh meleset. */
+  .segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .segmented .pill {
+    flex: 1;
+  }
+
+  .quick-entry form > .btn,
+  .quick-entry-body > button[type='submit'] {
+    width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .amount-input {
+    font-size: 24px;
+  }
+
+  .link-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Grafik lebar dibiarkan digulir sendiri, bukan memaksa seluruh halaman
+     bergeser ke samping. */
+  .chart {
+    padding: 16px 14px;
+  }
+
+  /* Kartu di dalam kartu memakan lebar dua kali. Di ponsel bingkai luarnya
+     dilepas dan tiap kelompok aturan yang jadi kartunya sendiri. */
+  .rules-editor {
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .rules-editor > button[type='submit'] {
+    width: 100%;
+  }
+
+  .history-toolbar {
+    width: 100%;
+    gap: 10px;
+  }
+
+  /* Setiap kelompok saringan jadi satu batang penuh selebar layar, seperti
+     .segmented di Beranda. Tanpa ini pilihannya membungkus ke baris berikutnya
+     dan tidak lagi terbaca sebagai satu kelompok yang saling meniadakan. */
+  .filter-row {
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--bg-sunken);
+  }
+
+  .filter-row .pill {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 6px;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+}
+
+/* Tekanan sentuh tidak perlu efek angkat seperti kursor mouse: di layar
+   sentuh, :hover nempel setelah jari diangkat dan tombol terlihat macet. */
+@media (hover: none) {
+  button:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .nav a:hover {
+    text-decoration: none;
+  }
+
+  .nav a.nav-link-active:hover {
+    text-decoration: underline;
   }
 }
 
@@ -1495,7 +1759,7 @@ button.secondary {
   color: var(--text-faint);
 }
 
-.check-action {
+a.check-action {
   white-space: nowrap;
   font-size: 14px;
   padding: 8px 14px;
