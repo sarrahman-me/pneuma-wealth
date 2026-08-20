@@ -25,6 +25,7 @@ const fetchToday = async (userId: string, today: string): Promise<TransactionVie
       dateLocal: transactions.dateLocal,
       description: transactions.description,
       source: transactions.source,
+      categoryId: transactions.categoryId,
       categoryName: categories.name,
     })
     .from(transactions)
@@ -57,6 +58,10 @@ export default async function Home() {
   ])
 
   const { allowance, funds, pace, stats } = state
+  const categoryOptions = categoryList.map((category) => ({
+    id: category.id,
+    name: category.name,
+  }))
 
   return (
     <main>
@@ -149,10 +154,7 @@ export default async function Home() {
 
       <QuickEntry
         accounts={accounts.map((account) => ({ id: account.id, name: account.name }))}
-        categories={categoryList.map((category) => ({
-          id: category.id,
-          name: category.name,
-        }))}
+        categories={categoryOptions}
         today={state.today}
       />
 
@@ -192,7 +194,11 @@ export default async function Home() {
         ) : (
           <ul>
             {todayTransactions.map((transaction) => (
-              <TransactionRow key={transaction.id} transaction={transaction} />
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                categories={categoryOptions}
+              />
             ))}
           </ul>
         )}

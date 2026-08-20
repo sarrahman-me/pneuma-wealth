@@ -1,7 +1,7 @@
 'use client'
 
-import { useActionState } from 'react'
-import { addWish, buyWish, deleteWish, releaseWish } from '@/app/actions/wishes'
+import { useActionState, useEffect, useState } from 'react'
+import { addWish, buyWish, deleteWish, releaseWish, updateWish } from '@/app/actions/wishes'
 import MoneyInput from '@/app/components/MoneyInput'
 import type { ActionResult } from '@/app/actions/transactions'
 import { formatMultiplier, formatRupiah, formatShortDate } from '@/lib/core/format'
@@ -14,8 +14,15 @@ const useAction = (action: (formData: FormData) => Promise<ActionResult>) =>
   )
 
 function WaitingRow({ wish }: { wish: WishView }) {
+  const [editing, setEditing] = useState(false)
+
   const [buyState, buyAction, buyPending] = useAction(buyWish)
   const [releaseState, releaseAction, releasePending] = useAction(releaseWish)
+  const [editState, editAction, editPending] = useAction(updateWish)
+
+  useEffect(() => {
+    if (editState?.ok) setEditing(false)
+  }, [editState])
 
   const cost = [
     wish.costInDays !== null && wish.costInDays >= 1 ? `${wish.costInDays} hari hidup` : null,
@@ -25,6 +32,57 @@ function WaitingRow({ wish }: { wish: WishView }) {
   ]
     .filter(Boolean)
     .join(' · ')
+
+  if (editing) {
+    return (
+      <li className="wish-row wish-row-editing">
+        <form action={editAction} className="row-editor">
+          <input type="hidden" name="id" value={wish.id} />
+
+          <div className="form-grid">
+            <label>
+              Apa yang ingin dibeli
+              <input name="name" defaultValue={wish.name} required />
+            </label>
+            <label>
+              Perkiraan harga
+              <MoneyInput name="amount" defaultValue={wish.amount} required />
+            </label>
+            <label>
+              Alasan
+              <input name="note" defaultValue={wish.note ?? ''} placeholder="Opsional" />
+            </label>
+          </div>
+
+          {/* Aturannya disebutkan di depan supaya tidak terasa seperti aplikasi
+              mengabaikan suntingan: menurunkan harga memang tidak memendekkan
+              jeda yang sedang berjalan. */}
+          <p className="helper-text">
+            Menaikkan harga bisa memperpanjang masa tunggu. Menurunkannya tidak
+            memperpendek tunggu yang sedang berjalan.
+          </p>
+
+          <div className="row-editor-actions">
+            <button type="submit" className="btn" disabled={editPending}>
+              {editPending ? 'Menyimpan…' : 'Simpan'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={() => setEditing(false)}
+              disabled={editPending}
+            >
+              Batal
+            </button>
+          </div>
+
+          {editState && !editState.ok ? (
+            <p className="alert-error">{editState.error}</p>
+          ) : null}
+        </form>
+      </li>
+    )
+  }
 
   return (
     <li className={wish.ready ? 'wish-row wish-ready' : 'wish-row'}>
@@ -53,12 +111,18 @@ function WaitingRow({ wish }: { wish: WishView }) {
               {releasePending ? '…' : 'Lepaskan'}
             </button>
           </form>
+          <button type="button" className="link-button" onClick={() => setEditing(true)}>
+            Ubah
+          </button>
         </div>
       ) : (
         <div className="wish-actions">
           <span className="wish-countdown">
             {wish.daysLeft} hari lagi
           </span>
+          <button type="button" className="link-button" onClick={() => setEditing(true)}>
+            Ubah
+          </button>
           <form action={releaseAction}>
             <input type="hidden" name="id" value={wish.id} />
             <button type="submit" className="link-button" disabled={releasePending}>

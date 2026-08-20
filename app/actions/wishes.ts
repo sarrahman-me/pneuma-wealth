@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/lib/db'
 import { accounts, transactions, wishItems } from '@/lib/db/schema'
-import { readyDateFor } from '@/lib/core/wish'
+import { readyDateAfterEdit, readyDateFor } from '@/lib/core/wish'
 import { todayIn } from '@/lib/core/timezone'
 import { requireCurrentUser } from '@/lib/server/user'
 import { getDailyState } from '@/lib/server/state'
@@ -75,6 +75,45 @@ export const addWish = async (formData: FormData): Promise<ActionResult> => {
     return { ok: true }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Gagal menyimpan.' }
+  }
+}
+
+/**
+ * Menyunting keinginan yang masih ditahan.
+ *
+ * `ready_on` dihitung ulang lewat `readyDateAfterEdit`, yang hanya boleh
+ * memperpanjang tunggu. Kalau menurunkan harga bisa memperpendeknya, mengetik
+ * angka lebih kecil jadi jalan pintas melewati jeda — persis yang ditahan
+ * halaman ini.
+ */
+export const updateWish = async (formData: FormData): Promise<ActionResult> => {
+  try {
+    const user = await requireCurrentUser()
+    const wish = await ownedWish(user.id, String(formData.get('id') ?? ''))
+    if (wish.status !== 'waiting') {
+      throw new Error('Keinginan yang sudah diputuskan tidak bisa diubah.')
+    }
+
+    const name = String(formData.get('name') ?? '').trim()
+    if (!name) throw new Error('Nama keinginan wajib diisi.')
+
+    const amount = parseAmount(formData.get('amount'))
+    const { allowance } = await getDailyState(user)
+
+    await getDb()
+      .update(wishItems)
+      .set({
+        name,
+        amount,
+        readyOn: readyDateAfterEdit(wish, amount, allowance.allowed),
+        note: String(formData.get('note') ?? '').trim() || null,
+      })
+      .where(eq(wishItems.id, wish.id))
+
+    refresh()
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Gagal mengubah.' }
   }
 }
 

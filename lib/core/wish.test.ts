@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { coolingDaysFor, pendingTotal, readyDateFor, viewWish, type WishItem } from './wish'
+import {
+  coolingDaysFor,
+  pendingTotal,
+  readyDateAfterEdit,
+  readyDateFor,
+  viewWish,
+  type WishItem,
+} from './wish'
 
 describe('coolingDaysFor', () => {
   it('menahan lebih lama untuk keinginan yang lebih besar', () => {
@@ -31,6 +38,7 @@ describe('viewWish', () => {
     id: 'a',
     name: 'Sepatu',
     amount: 600_000,
+    note: null,
     createdOn: '2026-08-20',
     readyOn: '2026-08-23',
     status: 'waiting',
@@ -63,10 +71,30 @@ describe('viewWish', () => {
 describe('pendingTotal', () => {
   it('hanya menjumlah yang masih ditahan', () => {
     const items: WishItem[] = [
-      { id: 'a', name: 'a', amount: 100_000, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'waiting' },
-      { id: 'b', name: 'b', amount: 200_000, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'released' },
-      { id: 'c', name: 'c', amount: 300_000, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'bought' },
+      { id: 'a', name: 'a', amount: 100_000, note: null, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'waiting' },
+      { id: 'b', name: 'b', amount: 200_000, note: null, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'released' },
+      { id: 'c', name: 'c', amount: 300_000, note: null, createdOn: '2026-08-01', readyOn: '2026-08-02', status: 'bought' },
     ]
     expect(pendingTotal(items)).toBe(100_000)
+  })
+})
+
+describe('readyDateAfterEdit', () => {
+  const wish = { createdOn: '2026-03-01', readyOn: '2026-03-04' }
+
+  it('memperpanjang tunggu saat harga dinaikkan', () => {
+    // 700rb pada jatah 100rb = 7× jatah, tingkat tunggu tertinggi.
+    expect(readyDateAfterEdit(wish, 700_000, 100_000)).toBe('2026-03-08')
+  })
+
+  it('tidak memperpendek tunggu saat harga diturunkan', () => {
+    expect(readyDateAfterEdit(wish, 10_000, 100_000)).toBe('2026-03-04')
+  })
+
+  it('menghitung ulang dari tanggal pencatatan, bukan dari hari ini', () => {
+    // Tetap 2026-03-08 walau disunting berhari-hari kemudian.
+    expect(readyDateAfterEdit({ createdOn: '2026-03-01', readyOn: '2026-03-02' }, 700_000, 100_000)).toBe(
+      '2026-03-08',
+    )
   })
 })

@@ -6,7 +6,7 @@ import { categories, transactions } from '@/lib/db/schema'
 import { addDays } from '@/lib/core/money'
 import { todayIn } from '@/lib/core/timezone'
 import { formatRupiah } from '@/lib/core/format'
-import { getCurrentUser } from '@/lib/server/user'
+import { getCurrentUser, listCategories } from '@/lib/server/user'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +50,7 @@ export default async function HistoryPage({
       dateLocal: transactions.dateLocal,
       description: transactions.description,
       source: transactions.source,
+      categoryId: transactions.categoryId,
       categoryName: categories.name,
     })
     .from(transactions)
@@ -64,6 +65,11 @@ export default async function HistoryPage({
     )
     .orderBy(desc(transactions.dateLocal), desc(transactions.createdAt))
     .limit(200)
+
+  const categoryOptions = (await listCategories(user.id)).map((category) => ({
+    id: category.id,
+    name: category.name,
+  }))
 
   const totalIn = rows
     .filter((row) => row.kind === 'IN')
@@ -131,7 +137,12 @@ export default async function HistoryPage({
       ) : (
         <ul className="tx-list">
           {rows.map((transaction) => (
-            <TransactionRow key={transaction.id} transaction={transaction} showDate />
+            <TransactionRow
+              key={transaction.id}
+              transaction={transaction}
+              categories={categoryOptions}
+              showDate
+            />
           ))}
         </ul>
       )}

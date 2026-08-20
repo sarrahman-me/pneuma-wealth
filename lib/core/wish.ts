@@ -44,6 +44,7 @@ export type WishItem = {
   id: string
   name: string
   amount: number
+  note: string | null
   createdOn: LocalDate
   readyOn: LocalDate
   status: WishStatus
@@ -82,3 +83,21 @@ export const pendingTotal = (wishes: WishItem[]): number =>
   wishes
     .filter((wish) => wish.status === 'waiting')
     .reduce((sum, wish) => sum + wish.amount, 0)
+
+/**
+ * Tanggal siap setelah keinginan disunting.
+ *
+ * Masa tunggu dihitung ulang dari `createdOn`, bukan dari hari ini — mengubah
+ * harga bukan alasan untuk mengulang jeda dari nol. Hasilnya lalu ditahan agar
+ * tidak pernah lebih awal dari `readyOn` yang sudah berjalan: menaikkan harga
+ * boleh memperpanjang tunggu, menurunkannya tidak boleh memperpendeknya. Kalau
+ * boleh, mengetik harga lebih kecil jadi cara termudah melewati jedanya.
+ */
+export const readyDateAfterEdit = (
+  wish: Pick<WishItem, 'createdOn' | 'readyOn'>,
+  amount: number,
+  dailyAllowance: number,
+): LocalDate => {
+  const recomputed = readyDateFor(wish.createdOn, amount, dailyAllowance)
+  return recomputed > wish.readyOn ? recomputed : wish.readyOn
+}

@@ -1232,6 +1232,37 @@ a.btn.btn-quiet:hover {
   color: var(--calm);
 }
 
+/* Baris yang sedang disunting.
+   Formnya mengambil seluruh lebar baris, bukan menyempil di kolom sebelah:
+   tiga kolom sempit membuat field isian jatuh di bawah 16px, dan di bawah itu
+   Safari iOS memperbesar layar sendiri saat field disentuh. */
+.tx-row-editing,
+.fixed-row-editing,
+.wish-row-editing {
+  display: block;
+}
+
+.row-editor {
+  padding: 4px 0 8px;
+}
+
+.row-editor .form-grid {
+  margin-top: 0;
+}
+
+.row-editor-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tx-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: flex-end;
+}
+
 /* Riwayat */
 .history-toolbar {
   display: flex;
@@ -1457,9 +1488,14 @@ a.btn.btn-quiet:hover {
   }
 
   .fixed-actions,
-  .wish-actions {
+  .wish-actions,
+  .tx-actions {
     grid-column: 1 / -1;
     justify-content: flex-start;
+  }
+
+  .row-editor-actions .btn {
+    flex: 1;
   }
 
   .wish-cta .btn {

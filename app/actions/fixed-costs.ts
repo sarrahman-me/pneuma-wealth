@@ -89,6 +89,35 @@ export const addFixedCost = async (formData: FormData): Promise<ActionResult> =>
   }
 }
 
+/**
+ * Menyunting biaya tetap. Pembayaran yang sudah tercatat sengaja dibiarkan:
+ * mengubah siklus mengubah bentuk kunci periodenya, dan menghapus riwayat
+ * lunas hanya untuk merapikan bentuk kunci berarti menghapus bukti bahwa
+ * uangnya sudah keluar.
+ */
+export const updateFixedCost = async (formData: FormData): Promise<ActionResult> => {
+  try {
+    const user = await requireCurrentUser()
+    const cost = await ownedFixedCost(user.id, String(formData.get('id') ?? ''))
+
+    const name = String(formData.get('name') ?? '').trim()
+    const amount = Math.trunc(Number(String(formData.get('amount') ?? '').replace(/[^\d]/g, '')))
+
+    if (!name) throw new Error('Nama biaya tetap wajib diisi.')
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Jumlah harus lebih dari 0.')
+
+    await getDb()
+      .update(fixedCosts)
+      .set({ name, amount, ...parseSchedule(formData) })
+      .where(eq(fixedCosts.id, cost.id))
+
+    refresh()
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Gagal mengubah.' }
+  }
+}
+
 export const deleteFixedCost = async (formData: FormData): Promise<ActionResult> => {
   try {
     const user = await requireCurrentUser()

@@ -14,6 +14,7 @@ const toItem = (row: typeof wishItems.$inferSelect): WishItem => ({
   id: row.id,
   name: row.name,
   amount: row.amount,
+  note: row.note,
   createdOn: row.createdOn,
   readyOn: row.readyOn,
   status: row.status,
