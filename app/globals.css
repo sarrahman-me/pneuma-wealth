@@ -519,11 +519,14 @@ a.btn.btn-quiet:hover {
   color: var(--text);
 }
 
+/* Jarak atasnya menahan baris label agar tidak menempel ke paragraf pengantar
+   di atasnya: keduanya kini sama-sama sans dan seukuran, jadi tanpa jeda ini
+   mereka terbaca sebagai satu blok. */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 18px 14px;
+  margin: 16px 0 18px;
 }
 
 .helper-text {
@@ -1347,10 +1350,14 @@ a.btn.btn-quiet:hover {
 }
 
 /* Aturan */
+/* Tiap kelompok aturan berdiri sebagai kartunya sendiri di atas kanvas.
+   Sebelumnya kelompok oat ini bersarang di dalam kartu ivory .rules-editor —
+   tiga lapis, dan lapisan oat-nya malah lebih gelap dari kanvas di belakangnya,
+   sehingga terbaca berat alih-alih tertinggi. */
 .rules-hero {
-  background: var(--bg-sunken);
-  border-radius: var(--radius-sm);
-  padding: 18px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
   margin-bottom: 18px;
   border: 1px solid var(--border);
 }
@@ -1359,11 +1366,12 @@ a.btn.btn-quiet:hover {
   margin-top: 0;
 }
 
+/* Pembungkusnya hanya wadah form, bukan permukaan. Kartunya ada di tiap
+   .rules-hero di dalamnya. */
 .rules-editor {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 26px;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 /* Kosong */
@@ -1508,15 +1516,6 @@ a.btn.btn-quiet:hover {
      bergeser ke samping. */
   .chart {
     padding: 16px 14px;
-  }
-
-  /* Kartu di dalam kartu memakan lebar dua kali. Di ponsel bingkai luarnya
-     dilepas dan tiap kelompok aturan yang jadi kartunya sendiri. */
-  .rules-editor {
-    padding: 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
   }
 
   .rules-editor > button[type='submit'] {
