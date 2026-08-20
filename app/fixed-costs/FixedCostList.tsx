@@ -107,7 +107,7 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
           </label>
         </div>
 
-        <button type="submit" className="btn" disabled={pending}>
+        <button type="submit" className="btn btn-cta" disabled={pending}>
           {pending ? 'Menyimpan…' : 'Tambah biaya tetap'}
         </button>
 

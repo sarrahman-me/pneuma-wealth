@@ -1,9 +1,36 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
+import { Source_Serif_4, Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import Navigation from './components/Navigation'
 import ServiceWorkerRegistrar from './components/ServiceWorkerRegistrar'
 import { isAuthConfigured } from '@/lib/server/auth'
+
+/*
+ * Dua keluarga huruf, dua tugas.
+ *
+ * Serif membawa suara: judul, kalimat, dan setiap angka rupiah. Sans hanya
+ * mengurus perkakas — navigasi, tombol, label kecil huruf besar. Pembagian ini
+ * yang membuat halaman terbaca seperti terbitan, bukan seperti dasbor.
+ *
+ * Keduanya di-host sendiri lewat next/font, bukan ditarik dari Google saat
+ * halaman dibuka. Aplikasi ini dipasang sebagai PWA dan harus tetap tampil utuh
+ * tanpa jaringan.
+ */
+const serif = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+  variable: '--font-serif',
+})
+
+const sans = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-sans',
+})
 
 export const metadata: Metadata = {
   title: 'PNEUMA',
@@ -35,13 +62,13 @@ export const viewport: Viewport = {
   // Zoom sengaja tidak dikunci — angka rupiah di sini panjang, dan mencubit
   // untuk memperbesar harus tetap bisa.
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f2ece3' },
-    { media: '(prefers-color-scheme: dark)', color: '#1b1a17' },
+    { media: '(prefers-color-scheme: light)', color: '#f0eee6' },
+    { media: '(prefers-color-scheme: dark)', color: '#141413' },
   ],
 }
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
-  <html lang="id">
+  <html lang="id" className={`${serif.variable} ${sans.variable}`}>
     <body>
       <div className="app-shell">
         <Navigation showUserButton={isAuthConfigured()} />

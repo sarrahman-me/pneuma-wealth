@@ -128,7 +128,7 @@ export default function SettingsForm({
         </div>
       </section>
 
-      <button type="submit" className="btn" disabled={pending}>
+      <button type="submit" className="btn btn-cta" disabled={pending}>
         {pending ? 'Menyimpan…' : 'Simpan'}
       </button>
 

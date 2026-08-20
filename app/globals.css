@@ -1,83 +1,121 @@
 /*
  * Tema PNEUMA.
  *
+ * Palet dan tipografinya mengikuti sistem desain Anthropic: kanvas perkamen
+ * ivory, permukaan datar yang ditinggikan lewat pergeseran nada dan garis
+ * rambut — bukan bayangan — serif editorial untuk suara, sans hanya untuk
+ * perkakas, dan satu-satunya warna cerah (clay) disimpan untuk tindakan paling
+ * menentukan di tiap halaman.
+ *
  * Semua warna lewat token di :root, dan mode gelap hanya menukar nilai token —
  * tidak ada satu pun warna yang definisinya cuma hidup di dalam media query.
- * Palet hangat dan tipografi serif sengaja dipertahankan: aplikasi ini harus
- * terasa tenang, karena nada menghakimi membuat orang berhenti membukanya.
+ * Nada hangatnya sengaja dipertahankan: aplikasi ini harus terasa tenang,
+ * karena nada menghakimi membuat orang berhenti membukanya.
  */
 
 :root {
   color-scheme: light dark;
 
-  --bg: #f6f3ee;
-  --bg-raised: #fffdfa;
-  --bg-sunken: #f2ece3;
-  --surface: #ffffff;
-  --border: #e3ddd4;
-  --border-strong: #c9c3b7;
+  /* Huruf. Nilai --font-serif dan --font-sans disuntik next/font di <html>;
+     cadangannya dipakai kalau berkas hurufnya belum sempat termuat. */
+  --serif: var(--font-serif), ui-serif, Georgia, Cambria, 'Times New Roman',
+    serif;
+  --sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
 
-  --text: #1c1b19;
-  --text-muted: #55504a;
-  --text-faint: #857e74;
+  /* Permukaan. Empat tingkat, dibedakan hanya oleh nada kertasnya. */
+  --bg: #f0eee6;
+  --bg-raised: #faf9f5;
+  --bg-sunken: #e3dacc;
+  --surface: #faf9f5;
+  --surface-feature: #f5e3c7;
+  --border: #cccbc8;
+  --border-strong: #87867f;
 
-  --accent: #1c1b19;
-  --accent-text: #f6f3ee;
+  --text: #141413;
+  --text-muted: #3d3d3a;
+  --text-faint: #62615a;
 
-  --calm: #2f6f5e;
-  --calm-bg: #eaf3ef;
+  --accent: #141413;
+  --accent-text: #faf9f5;
+
+  /* Satu-satunya warna cerah di sistem ini. Hanya untuk tombol tindakan utama,
+     tidak pernah untuk hiasan, ikon, atau keadaan tunjuk. */
+  --cta: #d97757;
+  --cta-hover: #c6613f;
+  --cta-text: #141413;
+
+  /* Nada semantik, semuanya dijaga di dalam keluarga warna tanah. */
+  --calm: #3f6b5a;
+  --calm-bg: #e6ebe4;
   --warn: #8a6a1f;
-  --warn-bg: #faf2df;
-  --alert: #a33a2a;
-  --alert-bg: #fbeae6;
-  --info-bg: #eef2fb;
-  --praise-bg: #eff4ea;
+  --warn-bg: #f5e3c7;
+  --alert: #c6613f;
+  --alert-bg: #f6e2d8;
+  --info-bg: #e3dacc;
+  --praise-bg: #e6ebe4;
 
-  --chart-spent: #6f8f83;
-  --chart-over: #c2604c;
-  --chart-plan: #9a9184;
-  --chart-buffer: #4d7d6d;
-  --chart-obligation: #a08a63;
-  --chart-flexible: #2f6f5e;
+  --chart-spent: #9c8a6e;
+  --chart-over: #c6613f;
+  --chart-plan: #b0aea5;
+  --chart-buffer: #4f7a68;
+  --chart-obligation: #b08968;
+  --chart-flexible: #3f6b5a;
 
-  --shadow: 0 12px 30px rgba(28, 27, 25, 0.08);
-  --radius: 14px;
-  --radius-sm: 9px;
+  /* Sistem ini tidak meninggikan permukaan dengan bayangan. Tokennya tetap ada
+     supaya aturan yang memakainya tidak perlu dibongkar satu per satu. */
+  --shadow: none;
+  --radius: 24px;
+  --radius-sm: 12px;
+  /* Tanda tangan sistemnya: tombol terisi hanya membulat di dua sudut bawah,
+     seolah ditarik dari tumpukan kartu. */
+  --radius-btn: 0 0 8px 8px;
 }
 
+/*
+ * Mode gelap.
+ *
+ * Sistem Anthropic hanya menetapkan satu permukaan gelap (#141413, dipakai
+ * untuk kaki halaman). Nada di bawah ini adalah perluasannya: kanvas memakai
+ * permukaan pembalik itu, dan sisanya dinaikkan sedikit demi sedikit dengan
+ * cara yang sama seperti sisi terangnya — beda nada, bukan bayangan.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #161513;
-    --bg-raised: #201e1b;
-    --bg-sunken: #1b1a17;
-    --surface: #201e1b;
-    --border: #322f2a;
-    --border-strong: #4a4640;
+    --bg: #141413;
+    --bg-raised: #1e1e1c;
+    --bg-sunken: #232320;
+    --surface: #1e1e1c;
+    --surface-feature: #2b2519;
+    --border: #3d3d3a;
+    --border-strong: #57564f;
 
-    --text: #f0ece4;
-    --text-muted: #b3aca1;
-    --text-faint: #857e74;
+    --text: #f0eee6;
+    --text-muted: #cbc9c0;
+    --text-faint: #a3a199;
 
-    --accent: #f0ece4;
-    --accent-text: #161513;
+    --accent: #f0eee6;
+    --accent-text: #141413;
 
-    --calm: #7fbfa9;
+    --cta: #d97757;
+    --cta-hover: #c6613f;
+    --cta-text: #141413;
+
+    --calm: #8fbfa8;
     --calm-bg: #1c2a26;
     --warn: #d6b263;
     --warn-bg: #2b2519;
     --alert: #e08a76;
     --alert-bg: #2e1e1a;
-    --info-bg: #1b1f2b;
+    --info-bg: #232320;
     --praise-bg: #1f2620;
 
-    --chart-spent: #7fa294;
-    --chart-over: #d97d68;
+    --chart-spent: #b3a184;
+    --chart-over: #d97757;
     --chart-plan: #7d7568;
     --chart-buffer: #6fae99;
     --chart-obligation: #bda07a;
-    --chart-flexible: #7fbfa9;
-
-    --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    --chart-flexible: #8fbfa8;
   }
 }
 
@@ -88,7 +126,11 @@
 
 body {
   margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  /* Serif untuk seluruh badan teks. Di produk teknologi ini tidak lazim, dan
+     justru itu yang menandai nadanya: halaman ini dibaca, bukan dipantau. */
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.5;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -114,28 +156,34 @@ body {
   padding-left: calc(20px + env(safe-area-inset-left));
   padding-right: calc(20px + env(safe-area-inset-right));
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-sunken) 85%, transparent);
-  backdrop-filter: blur(8px);
+  /* Datar dan buram: sistem ini tidak memakai blur atau bayangan untuk
+     memisahkan lapisan, hanya beda nada dan satu garis rambut. */
+  background: var(--bg);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .nav a {
+  font-family: var(--sans);
   color: var(--text);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 14px;
+  letter-spacing: -0.005em;
 }
 
 .nav a:hover {
   text-decoration: underline;
 }
 
+/* Merek memakai sans kecil huruf besar berjarak — penanda terbitan, bukan
+   judul halaman. */
 .nav-brand {
-  letter-spacing: 2px;
-  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: 13px;
 }
 
 .nav-links,
@@ -180,8 +228,7 @@ body {
   bottom: 0;
   z-index: 20;
   border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-sunken) 94%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--bg-raised);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
 }
 
@@ -208,10 +255,11 @@ body {
 
 .tab-active {
   color: var(--text);
-  background: color-mix(in srgb, var(--calm) 14%, transparent);
+  background: var(--bg-sunken);
 }
 
 .tab-label {
+  font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.2px;
@@ -227,12 +275,16 @@ main {
 
 h1 {
   margin: 0 0 20px;
-  font-size: 34px;
-  letter-spacing: 0.5px;
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 h2 {
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
   margin: 0 0 8px;
 }
 
@@ -246,17 +298,19 @@ strong {
   color: var(--text);
 }
 
+/* Garis bawah menetap, bukan muncul saat ditunjuk: ini konvensi cetak, dan
+   halaman ini memang ditata seperti terbitan. */
 a {
   color: var(--text);
+  text-underline-offset: 3px;
 }
 
 section {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
+  padding: 26px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow);
 }
 
 .row {
@@ -268,9 +322,11 @@ section {
 /* Controls */
 label {
   display: block;
+  font-family: var(--sans);
   font-weight: 600;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: -0.005em;
 }
 
 input,
@@ -282,7 +338,7 @@ select {
   /* Tepat 16px: di bawah itu, Safari iOS otomatis memperbesar layar begitu
      field disentuh, dan halaman tertinggal dalam keadaan ter-zoom. */
   font-size: 16px;
-  font-family: inherit;
+  font-family: var(--sans);
   background: var(--bg-raised);
   color: var(--text);
 }
@@ -295,20 +351,21 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+/* Sudut bawah-saja adalah tanda tangan sistem ini, menggantikan pil yang
+   membulat penuh. Tombol jadi terbaca seperti kartu yang ditarik dari
+   tumpukan, bukan seperti kendali antarmuka mana pun. */
 button {
-  padding: 10px 18px;
-  border-radius: 999px;
+  padding: 12px 24px;
+  border-radius: var(--radius-btn);
   border: none;
+  font-family: var(--sans);
   font-weight: 600;
-  font-family: inherit;
   font-size: 15px;
+  letter-spacing: -0.005em;
   cursor: pointer;
   background: var(--accent);
   color: var(--accent-text);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 button:disabled {
@@ -317,20 +374,38 @@ button:disabled {
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
+  background: color-mix(in srgb, var(--accent) 88%, var(--bg));
 }
 
-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
+/* Tindakan sekunder: hantu bergaris, sudut 12px penuh. Sengaja tidak memakai
+   sudut bawah-saja — bentuk itu milik tombol terisi. */
 .btn-quiet,
 button.secondary {
-  background: var(--bg-sunken);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.btn-quiet:hover:not(:disabled),
+button.secondary:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+/* Tombol clay.
+ *
+ * Satu per halaman, dan hanya untuk tindakan yang paling menentukan di halaman
+ * itu — mencatat pengeluaran, menyimpan aturan, masuk. Selain itu semuanya
+ * tetap hitam-tinta, supaya yang oranye benar-benar menarik mata. */
+.btn-cta,
+button.btn-cta {
+  background: var(--cta);
+  color: var(--cta-text);
+}
+
+.btn-cta:hover:not(:disabled),
+button.btn-cta:hover:not(:disabled) {
+  background: var(--cta-hover);
 }
 
 /* Tautan yang berperan sebagai tombol.
@@ -345,30 +420,49 @@ a.btn {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 11px 20px;
-  border-radius: 999px;
+  padding: 12px 24px;
+  border-radius: var(--radius-btn);
   background: var(--accent);
   color: var(--accent-text);
+  font-family: var(--sans);
   font-weight: 600;
   font-size: 15px;
+  letter-spacing: -0.005em;
   text-decoration: none;
 }
 
 a.btn:hover {
   text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 88%, var(--bg));
+}
+
+a.btn.btn-cta {
+  background: var(--cta);
+  color: var(--cta-text);
+}
+
+a.btn.btn-cta:hover {
+  background: var(--cta-hover);
 }
 
 a.btn.btn-quiet {
-  background: var(--bg-sunken);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+a.btn.btn-quiet:hover {
+  background: var(--bg-sunken);
 }
 
 .link-button {
   background: transparent;
   border: none;
+  border-radius: 0;
   color: var(--text-muted);
-  font-weight: 600;
+  font-family: var(--sans);
+  font-weight: 500;
   font-size: 14px;
   padding: 0;
   cursor: pointer;
@@ -376,27 +470,27 @@ a.btn.btn-quiet {
 }
 
 .link-button:hover:not(:disabled) {
-  transform: none;
-  box-shadow: none;
+  background: transparent;
   color: var(--text);
 }
 
 .segmented {
   display: inline-flex;
   background: var(--bg-sunken);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 4px;
   gap: 4px;
   margin-bottom: 18px;
 }
 
 .pill {
-  padding: 8px 18px;
-  border-radius: 999px;
+  padding: 9px 18px;
+  border-radius: 8px;
   border: none;
+  font-family: var(--sans);
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.6px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
@@ -412,7 +506,7 @@ a.btn.btn-quiet {
 
 .pill-in {
   background: var(--calm);
-  color: #ffffff;
+  color: var(--bg-raised);
 }
 
 .pill-muted {
@@ -420,9 +514,9 @@ a.btn.btn-quiet {
   color: var(--text-muted);
 }
 
-.pill:hover {
-  transform: none;
-  box-shadow: none;
+.pill:hover:not(.pill-out):not(.pill-in) {
+  background: var(--bg-raised);
+  color: var(--text);
 }
 
 .form-grid {
@@ -433,8 +527,10 @@ a.btn.btn-quiet {
 }
 
 .helper-text {
+  font-family: var(--sans);
   font-weight: 400;
   font-size: 13px;
+  letter-spacing: -0.005em;
   color: var(--text-faint);
   margin: 6px 0 0;
   display: block;
@@ -442,6 +538,7 @@ a.btn.btn-quiet {
 }
 
 .alert-error {
+  font-family: var(--sans);
   color: var(--alert);
   font-size: 13px;
   margin: 8px 0 0;
@@ -481,8 +578,10 @@ a.btn.btn-quiet {
 }
 
 .insight-continuity {
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
   margin: 0 0 10px;
@@ -510,17 +609,14 @@ a.btn.btn-quiet {
 
 /* Ritual pemasukan */
 .ritual {
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--calm) 12%, var(--surface)),
-    var(--surface)
-  );
-  border: 1px solid color-mix(in srgb, var(--calm) 35%, var(--border));
+  background: var(--surface-feature);
+  border: 1px solid color-mix(in srgb, var(--surface-feature) 55%, var(--border));
 }
 
 .ritual-eyebrow {
+  font-family: var(--sans);
   font-size: 12px;
-  letter-spacing: 1.4px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--calm);
   margin: 0 0 4px;
@@ -528,9 +624,11 @@ a.btn.btn-quiet {
 }
 
 .ritual-amount {
-  font-size: 40px;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1.1;
   margin: 0 0 8px;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
 }
 
 .ritual-lead {
@@ -546,13 +644,16 @@ a.btn.btn-quiet {
   gap: 10px;
 }
 
+/* Baris pembagian duduk di atas kartu manilla, jadi isiannya naik satu tingkat
+   ke ivory terang — bukan turun ke oat, yang nadanya terlalu dekat dengan
+   kartunya sendiri dan membuat keduanya saling menempel. */
 .split-part {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 2px 12px;
   padding: 14px 16px;
   border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
+  background: var(--bg-raised);
   border-left: 4px solid var(--border-strong);
 }
 
@@ -612,16 +713,14 @@ a.btn.btn-quiet {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  padding: 24px;
 }
 
+/* Kartu sorotan memakai nada manilla. Penekanannya datang dari jenis kertas,
+   bukan dari gradasi atau bayangan. */
 .hero-primary {
-  background: linear-gradient(
-    150deg,
-    color-mix(in srgb, var(--calm) 8%, var(--surface)),
-    var(--surface)
-  );
+  background: var(--surface-feature);
+  border-color: color-mix(in srgb, var(--surface-feature) 60%, var(--border));
 }
 
 .hero-warn {
@@ -630,8 +729,10 @@ a.btn.btn-quiet {
 }
 
 .hero-label {
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
   margin: 0 0 6px;
@@ -640,7 +741,7 @@ a.btn.btn-quiet {
 .hero-value {
   font-size: 32px;
   margin: 0;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -652,7 +753,7 @@ a.btn.btn-quiet {
 .meter-track {
   display: flex;
   height: 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--bg-sunken);
   overflow: hidden;
   border: 1px solid var(--border);
@@ -680,6 +781,7 @@ a.btn.btn-quiet {
 .meter-foot {
   display: flex;
   justify-content: space-between;
+  font-family: var(--sans);
   font-size: 12px;
   color: var(--text-faint);
   margin-top: 6px;
@@ -701,8 +803,10 @@ a.btn.btn-quiet {
 }
 
 .pace-label {
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
@@ -722,9 +826,8 @@ a.btn.btn-quiet {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: 22px 24px;
   margin: 0 0 18px;
-  box-shadow: var(--shadow);
 }
 
 .chart-compact {
@@ -742,10 +845,11 @@ a.btn.btn-quiet {
 
 .chart-title {
   font-weight: 600;
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .chart-note {
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
@@ -816,7 +920,7 @@ a.btn.btn-quiet {
 .chart-label {
   fill: var(--text-faint);
   font-size: 11px;
-  font-family: inherit;
+  font-family: var(--sans);
 }
 
 .chart-legend {
@@ -824,6 +928,7 @@ a.btn.btn-quiet {
   gap: 18px;
   flex-wrap: wrap;
   margin-top: 12px;
+  font-family: var(--sans);
   font-size: 12px;
   color: var(--text-faint);
 }
@@ -854,6 +959,7 @@ a.btn.btn-quiet {
 }
 
 .chart-footnote {
+  font-family: var(--sans);
   font-size: 12px;
   color: var(--text-faint);
   margin: 10px 0 0;
@@ -953,6 +1059,7 @@ a.btn.btn-quiet {
 }
 
 .gap-threshold span {
+  font-family: var(--sans);
   position: absolute;
   right: 0;
   /* Di bawah garis, supaya label tidak keluar dari plot saat ambangnya di puncak. */
@@ -1057,10 +1164,11 @@ a.btn.btn-quiet {
 }
 
 .wish-countdown {
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--text-muted);
   background: var(--bg-sunken);
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 6px 12px;
   white-space: nowrap;
 }
@@ -1106,6 +1214,7 @@ a.btn.btn-quiet {
 
 .tx-meta {
   margin: 2px 0 0;
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--text-faint);
 }
@@ -1136,6 +1245,7 @@ a.btn.btn-quiet {
 }
 
 .history-footer {
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--text-faint);
 }
@@ -1172,8 +1282,7 @@ a.btn.btn-quiet {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
-  box-shadow: var(--shadow);
+  padding: 22px;
 }
 
 .metric-warn {
@@ -1182,8 +1291,10 @@ a.btn.btn-quiet {
 }
 
 .metric-title {
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
   margin: 0 0 6px;
@@ -1198,7 +1309,7 @@ a.btn.btn-quiet {
 
 .metric-bar {
   height: 6px;
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -1252,8 +1363,7 @@ a.btn.btn-quiet {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
-  box-shadow: var(--shadow);
+  padding: 26px;
 }
 
 /* Kosong */
@@ -1273,6 +1383,7 @@ a.btn.btn-quiet {
 
 .empty-desc {
   margin: 0;
+  font-family: var(--sans);
   font-size: 14px;
   color: var(--text-faint);
 }
@@ -1425,7 +1536,7 @@ a.btn.btn-quiet {
     flex-wrap: nowrap;
     gap: 4px;
     padding: 4px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--bg-sunken);
   }
 
@@ -1466,7 +1577,7 @@ a.btn.btn-quiet {
 }
 
 .guide-lead {
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.65;
   color: var(--text-muted);
   max-width: 62ch;
@@ -1509,8 +1620,10 @@ a.btn.btn-quiet {
 }
 
 .guide-toc-title {
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
   margin: 0 0 10px;
@@ -1641,12 +1754,13 @@ a.btn.btn-quiet {
 }
 
 .guide-callout h3 {
+  font-family: var(--sans);
   margin-top: 0;
   /* Judul kotak harus jelas terpisah dari pertanyaan pertama di bawahnya,
      karena keduanya sama-sama tebal. */
   margin-bottom: 14px;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
@@ -1703,6 +1817,7 @@ a.btn.btn-quiet {
 }
 
 .checklist-count {
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--text-faint);
 }
@@ -1743,7 +1858,7 @@ a.btn.btn-quiet {
 .check-done .check-mark {
   background: var(--calm);
   border-color: var(--calm);
-  color: #ffffff;
+  color: var(--bg-raised);
 }
 
 .check-title {

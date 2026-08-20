@@ -42,7 +42,7 @@ export default async function Home() {
       <main>
         <h1>PNEUMA</h1>
         <p>Masuk untuk melanjutkan.</p>
-        <Link href="/sign-in" className="btn">
+        <Link href="/sign-in" className="btn btn-cta">
           Masuk
         </Link>
       </main>
@@ -166,7 +166,7 @@ export default async function Home() {
               : ''}
           </p>
         </div>
-        <Link href="/wishlist" className="btn">
+        <Link href="/wishlist" className="btn btn-quiet">
           {stats.wishReadyCount > 0
             ? `${stats.wishReadyCount} menunggu keputusan`
             : 'Buka daftar keinginan'}

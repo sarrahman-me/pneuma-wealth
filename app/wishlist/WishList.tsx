@@ -126,7 +126,7 @@ export default function WishList({
               <input name="note" placeholder="Opsional" />
             </label>
           </div>
-          <button type="submit" className="btn" disabled={pending}>
+          <button type="submit" className="btn btn-cta" disabled={pending}>
             {pending ? 'Menyimpan…' : 'Tahan dulu'}
           </button>
           {state && !state.ok ? <p className="alert-error">{state.error}</p> : null}
