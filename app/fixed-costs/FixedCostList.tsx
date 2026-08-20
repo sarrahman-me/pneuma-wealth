@@ -16,7 +16,7 @@ export type FixedCostView = {
   id: string
   name: string
   amount: number
-  /** Siklusnya dalam bahasa manusia, mis. "Setiap Senin". */
+  /** Jadwalnya dalam bahasa sehari-hari, mis. "Setiap Senin". */
   scheduleLabel: string
   recurrence: 'daily' | 'weekly' | 'monthly' | 'yearly'
   dueDay: number
@@ -44,8 +44,8 @@ const useAction = (action: (formData: FormData) => Promise<ActionResult>) =>
   )
 
 /**
- * Field jatuh tempo berubah arti mengikuti siklus, jadi pilihannya dijaga di
- * state — menampilkan "tanggal 1–31" untuk tagihan mingguan hanya membingungkan.
+ * Field jatuh tempo berubah arti mengikuti pengulangannya, jadi pilihannya dijaga
+ * di state — menampilkan "tanggal 1–31" untuk tagihan mingguan hanya membingungkan.
  * Dipakai bersama oleh form tambah dan form ubah supaya keduanya tidak pernah
  * berbeda aturan.
  */
@@ -63,16 +63,16 @@ function ScheduleFields({
   return (
     <>
       <label>
-        Siklus
+        Berulang
         <select
           name="recurrence"
           value={recurrence}
           onChange={(event) => onRecurrenceChange(event.target.value)}
         >
-          <option value="daily">Harian</option>
-          <option value="weekly">Mingguan</option>
-          <option value="monthly">Bulanan</option>
-          <option value="yearly">Tahunan</option>
+          <option value="daily">Setiap hari</option>
+          <option value="weekly">Setiap minggu</option>
+          <option value="monthly">Setiap bulan</option>
+          <option value="yearly">Setiap tahun</option>
         </select>
       </label>
 
@@ -120,12 +120,12 @@ function ScheduleFields({
   )
 }
 
-/** Biaya harian tidak punya tanggal jatuh tempo; yang perlu dijelaskan justru dampaknya. */
+/** Tagihan harian tidak punya tanggal jatuh tempo; yang perlu dijelaskan justru dampaknya. */
 function DailyNote() {
   return (
     <p className="helper-text">
-      Biaya harian disisihkan untuk setiap hari dalam horizon kewajiban, jadi
-      jatah harianmu ikut menyesuaikan sejak sekarang.
+      Tagihan harian dipisahkan untuk setiap hari ke depan, jadi jatah harianmu
+      ikut menyesuaikan sejak sekarang.
     </p>
   )
 }
@@ -145,7 +145,7 @@ function Row({ cost }: { cost: FixedCostView }) {
   }, [editState])
 
   const dueLabel = cost.paid
-    ? 'Yang terdekat sudah lunas'
+    ? 'Yang terdekat sudah dibayar'
     : cost.daysToDue === 0
       ? 'Jatuh tempo hari ini'
       : `Jatuh tempo ${cost.daysToDue} hari lagi`
@@ -153,7 +153,7 @@ function Row({ cost }: { cost: FixedCostView }) {
   // Untuk siklus pendek, sekali jatuh tempo bukan gambaran utuh: yang benar-
   // benar disisihkan adalah seluruh kejadian dalam horizon.
   const aheadLabel =
-    cost.unpaidAhead > 1 ? ` · ${cost.unpaidAhead}× disisihkan ke depan` : ''
+    cost.unpaidAhead > 1 ? ` · uangnya dipisahkan ${cost.unpaidAhead}× ke depan` : ''
 
   if (editing) {
     return (
@@ -185,8 +185,8 @@ function Row({ cost }: { cost: FixedCostView }) {
               siklus yang baru. Lebih baik dikatakan daripada mengejutkan. */}
           {recurrence !== cost.recurrence ? (
             <p className="helper-text">
-              Mengubah siklus membuat catatan lunas yang lama tidak lagi cocok dengan
-              periode yang baru. Riwayat transaksinya tetap tersimpan.
+              Kalau pengulangannya diubah, tanda sudah dibayar yang lama tidak lagi cocok
+              dengan jadwal baru. Catatan pembayarannya tetap tersimpan.
             </p>
           ) : null}
 
@@ -240,7 +240,7 @@ function Row({ cost }: { cost: FixedCostView }) {
             className={cost.paid ? 'btn btn-quiet' : 'btn'}
             disabled={paidPending}
           >
-            {paidPending ? '…' : cost.paid ? 'Batalkan' : 'Tandai lunas'}
+            {paidPending ? '…' : cost.paid ? 'Batalkan' : 'Sudah dibayar'}
           </button>
         </form>
 
@@ -269,7 +269,7 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
         <div className="form-grid">
           <label>
             Nama
-            <input name="name" placeholder="Sewa, listrik, internet…" required />
+            <input name="name" placeholder="Kontrakan, listrik, internet…" required />
           </label>
           <label>
             Jumlah
@@ -286,7 +286,7 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
         {recurrence === 'daily' ? <DailyNote /> : null}
 
         <button type="submit" className="btn btn-cta" disabled={pending}>
-          {pending ? 'Menyimpan…' : 'Tambah biaya tetap'}
+          {pending ? 'Menyimpan…' : 'Tambah tagihan rutin'}
         </button>
 
         {state && !state.ok ? <p className="alert-error">{state.error}</p> : null}
@@ -294,9 +294,9 @@ export default function FixedCostList({ costs }: { costs: FixedCostView[] }) {
 
       {costs.length === 0 ? (
         <div className="empty-state">
-          <p className="empty-title">Belum ada biaya tetap.</p>
+          <p className="empty-title">Belum ada tagihan rutin.</p>
           <p className="empty-desc">
-            Tambahkan sewa atau langganan supaya uangnya disisihkan sejak awal.
+            Masukkan kontrakan atau langganan supaya uangnya dipisahkan sejak awal.
           </p>
         </div>
       ) : (

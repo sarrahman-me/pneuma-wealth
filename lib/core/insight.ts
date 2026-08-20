@@ -20,16 +20,16 @@ import type {
   Tone,
 } from './insight-types'
 
-/** Runway di bawah ini dianggap genting. */
+/** Uang yang tinggal cukup untuk hari sebanyak ini dianggap genting. */
 export const RUNWAY_CRITICAL_DAYS = 7
 
-/** Biaya tetap dianggap mendesak bila jatuh tempo dalam rentang ini. */
+/** Tagihan rutin dianggap mendesak bila jatuh tempo dalam rentang ini. */
 export const DUE_SOON_DAYS = 7
 
 /** Sudah memakai porsi ini dari jatah hari ini berarti sudah dekat batas. */
 export const NEAR_LIMIT_RATIO = 0.8
 
-/** Tidak ada pemasukan selama ini, untuk pemasukan tak menentu, layak disebut. */
+/** Selama ini belum ada uang masuk; untuk penghasilan tak menentu, layak disebut. */
 export const INCOME_DROUGHT_DAYS = 21
 
 /** Di atas porsi ini, pengeluaran didominasi keinginan, bukan kebutuhan. */
@@ -53,7 +53,7 @@ const noTxNextStep = (bucket: TimeBucket): string => {
     case 'evening':
       return 'Langkah kecil: ingat-ingat hari ini, catat yang sempat terlewat.'
     case 'night':
-      return 'Kalau hari ini memang tidak ada pengeluaran, biarkan kosong — itu juga catatan.'
+      return 'Kalau hari ini memang tidak ada yang keluar, biarkan kosong — itu juga catatan.'
   }
 }
 
@@ -103,7 +103,7 @@ const RULES: Rule[] = [
     build: () => ({
       statusTitle: 'Aplikasi belum tahu biaya hidup harianmu.',
       bullets: [
-        'Tanpa angka ini, dana penyangga dan runway tidak bisa dihitung.',
+        'Tanpa angka ini, dana cadangan dan perkiraan uangmu cukup sampai kapan tidak bisa dihitung.',
         'Perkiraan kasar sudah cukup — bisa diubah kapan saja.',
       ],
       nextStep: 'Isi biaya hidup harian di halaman Aturan.',
@@ -115,12 +115,12 @@ const RULES: Rule[] = [
     id: 'onboarding_few_tx',
     when: ({ stats }) => stats.txCountTotal < 5,
     build: ({ stats, allowance }) => ({
-      statusTitle: `Baru ${stats.txCountTotal} transaksi, pelan-pelan bangun ritme.`,
+      statusTitle: `Baru ${stats.txCountTotal} catatan, pelan-pelan saja dulu.`,
       bullets: [
-        `Total catatan saat ini ${stats.txCountTotal} transaksi.`,
+        `Sejauh ini ada ${stats.txCountTotal} catatan.`,
         `Jatah hari ini ${formatRupiah(allowance.allowed)}.`,
       ],
-      nextStep: 'Langkah kecil: catat 1 transaksi hari ini agar ritme terasa.',
+      nextStep: 'Langkah kecil: catat 1 pengeluaran hari ini, biar terbiasa.',
       tone: 'calm',
       keyNumbers: [stats.txCountTotal, allowance.allowed],
     }),
@@ -132,11 +132,11 @@ const RULES: Rule[] = [
     // sini sengaja tidak diulang. Yang tersisa untuk dikatakan adalah apa yang
     // biasanya terjadi setelah hari ini.
     build: ({ stats, funds, allowance, cadence }) => ({
-      statusTitle: 'Minggu pertama yang menentukan sisa siklus.',
+      statusTitle: 'Minggu pertama ini yang menentukan sisanya.',
       bullets: [
         cadence.typicalGap !== null
-          ? `Uang ini harus bertahan sekitar ${cadence.typicalGap} hari, sampai pemasukan berikutnya.`
-          : 'Belum cukup data untuk menebak kapan pemasukan berikutnya datang.',
+          ? `Uang ini harus cukup sekitar ${cadence.typicalGap} hari, sampai uang masuk berikutnya.`
+          : 'Catatannya belum cukup untuk menebak kapan uang masuk lagi.',
         `Uang tersedia ${formatRupiah(funds.available)} setelah tagihan disisihkan.`,
       ],
       nextStep: `Hari ini cukup ${formatRupiah(allowance.allowed)} — sama seperti hari-hari berikutnya.`,
@@ -148,12 +148,12 @@ const RULES: Rule[] = [
     id: 'runway_critical',
     when: ({ funds }) => funds.runwayDays !== null && funds.runwayDays <= RUNWAY_CRITICAL_DAYS,
     build: ({ funds }) => ({
-      statusTitle: `Runway tinggal ${funds.runwayDays} hari.`,
+      statusTitle: `Uangmu tinggal cukup untuk ${funds.runwayDays} hari.`,
       bullets: [
-        `Uang tersedia ${formatRupiah(funds.available)} setelah semua tagihan terjadwal.`,
-        'Ini kondisi yang butuh pemasukan, bukan sekadar hemat.',
+        `Uang tersedia ${formatRupiah(funds.available)} setelah semua tagihan disisihkan.`,
+        'Kondisi begini butuh tambahan uang masuk, bukan sekadar hemat.',
       ],
-      nextStep: 'Prioritaskan kebutuhan inti hari ini, dan kejar satu sumber pemasukan.',
+      nextStep: 'Dahulukan kebutuhan pokok hari ini, lalu kejar satu sumber uang masuk.',
       tone: 'alert',
       keyNumbers: [funds.runwayDays ?? 0, funds.available],
     }),
@@ -162,16 +162,16 @@ const RULES: Rule[] = [
     id: 'burning_too_fast',
     when: ({ pace }) => isBurningTooFast(pace),
     build: ({ pace, allowance }) => ({
-      statusTitle: `Laju belanjamu ${formatMultiplier(pace.paceRatio ?? 1)} lebih cepat dari rencana.`,
+      statusTitle: `Belanjamu ${formatMultiplier(pace.paceRatio ?? 1)} lebih cepat dari rencana.`,
       bullets: [
-        `${pace.daysElapsed} hari sejak pemasukan terakhir, terpakai ${formatRupiah(pace.spentSinceIncome)} dari rencana ${formatRupiah(pace.plannedSoFar ?? 0)}.`,
+        `${pace.daysElapsed} hari sejak uang terakhir masuk, terpakai ${formatRupiah(pace.spentSinceIncome)} dari rencana ${formatRupiah(pace.plannedSoFar ?? 0)}.`,
         pace.shortfallDays !== null && pace.shortfallDays > 0
-          ? `Dengan laju ini uang habis ${pace.daysUntilEmpty} hari lagi — sekitar ${pace.shortfallDays} hari sebelum pemasukan berikutnya biasanya datang.`
+          ? `Kalau segini terus, uang habis ${pace.daysUntilEmpty} hari lagi — sekitar ${pace.shortfallDays} hari sebelum biasanya uang masuk lagi.`
           : pace.daysUntilEmpty !== null
-            ? `Dengan laju ini uang habis ${pace.daysUntilEmpty} hari lagi.`
-            : 'Laju ini belum bisa diproyeksikan ke depan.',
+            ? `Kalau segini terus, uang habis ${pace.daysUntilEmpty} hari lagi.`
+            : 'Belum bisa diperkirakan uangnya cukup sampai kapan.',
       ],
-      nextStep: `Kembali ke ${formatRupiah(allowance.allowed)} per hari mulai sekarang, sebelum sisa siklus yang menanggungnya.`,
+      nextStep: `Kembali ke ${formatRupiah(allowance.allowed)} per hari mulai sekarang, sebelum hari-hari berikutnya yang kena getahnya.`,
       tone: 'alert',
       keyNumbers: [pace.spentSinceIncome, pace.plannedSoFar ?? 0, pace.daysUntilEmpty ?? 0],
     }),
@@ -187,7 +187,7 @@ const RULES: Rule[] = [
       ],
       nextStep:
         funds.mode === 'calm'
-          ? 'Tahan belanja tambahan sampai besok; penyanggamu masih aman.'
+          ? 'Tahan belanja tambahan sampai besok; dana cadanganmu masih aman.'
           : 'Hentikan pengeluaran tambahan sampai besok.',
       tone: 'alert',
       keyNumbers: [allowance.spent, allowance.allowed, allowance.remaining],
@@ -216,8 +216,8 @@ const RULES: Rule[] = [
     build: ({ stats, funds }) => ({
       statusTitle:
         stats.daysToNextDue === 0
-          ? 'Ada biaya tetap jatuh tempo hari ini.'
-          : `Biaya tetap jatuh tempo ${stats.daysToNextDue} hari lagi.`,
+          ? 'Ada tagihan rutin yang jatuh tempo hari ini.'
+          : `Ada tagihan rutin yang jatuh tempo ${stats.daysToNextDue} hari lagi.`,
       bullets: [
         `${stats.unpaidFixedCostCount} tagihan belum lunas, total ${formatRupiah(stats.unpaidFixedCostAmount)}.`,
         'Uangnya sudah disisihkan, jadi jatah harianmu tidak terpengaruh.',
@@ -231,12 +231,12 @@ const RULES: Rule[] = [
     id: 'buffer_low',
     when: ({ funds }) => funds.mode === 'tight',
     build: ({ funds, allowance, settings }) => ({
-      statusTitle: `Penyangga baru terisi ${Math.round((funds.bufferRatio ?? 0) * 100)}%.`,
+      statusTitle: `Dana cadangan baru terisi ${Math.round((funds.bufferRatio ?? 0) * 100)}%.`,
       bullets: [
         `Terkumpul ${formatRupiah(funds.bufferBalance)} dari target ${formatRupiah(funds.bufferTarget)}.`,
-        // Penyangga tidak lagi jadi gerbang, jadi katakan apa adanya: jatah
-        // tetap ada, hanya lebih kecil selama penyangga masih diisi.
-        `${settings.bufferFillPercent}% dari uangmu sedang mengisi penyangga, sisanya jadi jatah harian.`,
+        // Dana cadangan tidak lagi jadi gerbang, jadi katakan apa adanya: jatah
+        // tetap ada, hanya lebih kecil selama cadangannya masih diisi.
+        `${settings.bufferFillPercent}% dari uangmu sedang mengisi dana cadangan, sisanya jadi jatah harian.`,
       ],
       nextStep: `Jaga pengeluaran hari ini di bawah ${formatRupiah(allowance.allowed)}.`,
       tone: 'alert',
@@ -281,14 +281,14 @@ const RULES: Rule[] = [
     when: ({ stats }) =>
       stats.daysSinceIncome !== null && stats.daysSinceIncome >= INCOME_DROUGHT_DAYS,
     build: ({ stats, funds }) => ({
-      statusTitle: `Sudah ${stats.daysSinceIncome} hari tanpa pemasukan.`,
+      statusTitle: `Sudah ${stats.daysSinceIncome} hari belum ada uang masuk.`,
       bullets: [
         funds.runwayDays !== null
-          ? `Runway saat ini ${funds.runwayDays} hari.`
-          : 'Runway belum bisa dihitung.',
-        'Untuk pemasukan tak menentu, jeda panjang itu wajar — yang penting terlihat.',
+          ? `Uang yang ada cukup untuk sekitar ${funds.runwayDays} hari.`
+          : 'Belum bisa dihitung uangnya cukup sampai kapan.',
+        'Kalau penghasilanmu memang tidak menentu, jeda panjang itu biasa — yang penting kelihatan.',
       ],
-      nextStep: 'Cek apakah ada tagihan/invoice yang bisa ditagih minggu ini.',
+      nextStep: 'Cek apakah ada pekerjaan atau tagihan yang bisa ditagih minggu ini.',
       tone: funds.mode === 'calm' ? 'calm' : 'alert',
       keyNumbers: [stats.daysSinceIncome ?? 0, funds.runwayDays ?? 0],
     }),
@@ -302,12 +302,12 @@ const RULES: Rule[] = [
     build: ({ stats }) => {
       const percent = Math.round((stats.discretionaryShare7d ?? 0) * 100)
       return {
-        statusTitle: `${percent}% pengeluaran 7 harimu bukan kebutuhan.`,
+        statusTitle: `${percent}% belanja 7 harimu bukan kebutuhan.`,
         bullets: [
-          `Total 7 hari ${formatRupiah(stats.spent7d)}.`,
+          `Total belanja 7 hari ${formatRupiah(stats.spent7d)}.`,
           'Ini bukan penilaian — hanya supaya polanya terlihat.',
         ],
-        nextStep: 'Pilih satu kategori keinginan yang paling mudah dikurangi minggu ini.',
+        nextStep: 'Pilih satu jenis belanja yang paling gampang dikurangi minggu ini.',
         tone: 'calm',
         keyNumbers: [percent, stats.spent7d],
       }
@@ -317,9 +317,9 @@ const RULES: Rule[] = [
     id: 'consistency_praise',
     when: ({ stats }) => stats.daysWithTx7d >= 6,
     build: ({ stats }) => ({
-      statusTitle: `Kamu konsisten ${stats.daysWithTx7d} dari 7 hari.`,
+      statusTitle: `Kamu rutin mencatat ${stats.daysWithTx7d} dari 7 hari.`,
       bullets: [
-        `Total pengeluaran 7 hari ${formatRupiah(stats.spent7d)}.`,
+        `Total belanja 7 hari ${formatRupiah(stats.spent7d)}.`,
         `Rata-rata ${formatRupiah(Math.floor(stats.spent7d / 7))} per hari.`,
       ],
       nextStep: 'Pertahankan: cukup 1 catatan per hari selama 2 hari lagi.',
@@ -335,7 +335,7 @@ const RULES: Rule[] = [
       bullets: [
         `Sisa jatah hari ini ${formatRupiah(Math.max(0, allowance.remaining))}.`,
         funds.runwayDays !== null
-          ? `Aman ${funds.runwayDays} hari tanpa pemasukan baru.`
+          ? `Uangnya masih cukup untuk ${funds.runwayDays} hari walau tidak ada uang masuk.`
           : `Uang tersedia ${formatRupiah(funds.available)}.`,
       ],
       nextStep: 'Tidak ada yang perlu dilakukan. Lanjutkan saja.',

@@ -21,9 +21,9 @@ export default async function FixedCostsPage() {
   if (!user) {
     return (
       <main>
-        <h1>Biaya Tetap</h1>
+        <h1>Tagihan Rutin</h1>
         <p>
-          <Link href="/sign-in">Masuk</Link> untuk mengelola biaya tetap.
+          <Link href="/sign-in">Masuk</Link> untuk mengatur tagihan rutin.
         </p>
       </main>
     )
@@ -89,14 +89,14 @@ export default async function FixedCostsPage() {
 
   return (
     <main>
-      <h1>Biaya Tetap</h1>
+      <h1>Tagihan Rutin</h1>
       <p>
-        Tagihan yang belum lunas otomatis disisihkan dari uang yang bisa kamu belanjakan, jadi jatah
-        harianmu tidak pernah terlalu optimis.
+        Tagihan yang belum dibayar otomatis dipisahkan dari uang belanjamu, jadi jatah
+        harian yang muncul bukan angka yang terlalu manis.
       </p>
 
       <section className="fixed-summary">
-        <p className="metric-title">Disisihkan untuk {horizonDays} hari ke depan</p>
+        <p className="metric-title">Dipisahkan untuk {horizonDays} hari ke depan</p>
         <p className="metric-value">{formatRupiah(unpaidTotal)}</p>
       </section>
 

@@ -24,8 +24,8 @@ export default async function RulesPage() {
     <main>
       <h1>Aturan</h1>
       <p>
-        Dua kelompok angka yang sengaja dipisah: yang menentukan rasa aman, dan yang menentukan
-        jatah belanja.
+        Dua kelompok angka yang sengaja dipisah: yang bikin kamu merasa aman, dan yang
+        menentukan jatah belanja harian.
       </p>
       <SettingsForm
         settings={user.settings}

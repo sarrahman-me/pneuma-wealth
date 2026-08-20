@@ -26,7 +26,7 @@ export default function CadenceChart({ cadence }: { cadence: IncomeCadence }) {
   return (
     <figure className="chart chart-compact">
       <figcaption className="chart-head">
-        <span className="chart-title">Jeda antar pemasukan</span>
+        <span className="chart-title">Jarak antar uang masuk</span>
         <span className="chart-note">
           {cadence.medianGap !== null ? `Biasanya ${cadence.medianGap} hari` : 'Belum ada pola'}
         </span>
@@ -35,13 +35,13 @@ export default function CadenceChart({ cadence }: { cadence: IncomeCadence }) {
       <div
         className="gap-bars"
         role="img"
-        aria-label={`Jeda antar pemasukan: ${cadence.gaps.join(', ')} hari. Jeda berjalan sekarang ${running} hari.`}
+        aria-label={`Jarak antar uang masuk: ${cadence.gaps.join(', ')} hari. Yang sedang berjalan sekarang ${running} hari.`}
       >
         {typical !== null ? (
           <div
             className="gap-threshold"
             style={{ bottom: `${(typical / ceiling) * 100}%` }}
-            title={`Jeda tipikal ${typical} hari`}
+            title={`Biasanya ${typical} hari`}
           >
             <span>{typical} hari</span>
           </div>

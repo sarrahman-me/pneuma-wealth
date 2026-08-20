@@ -114,13 +114,13 @@ export default async function HistoryPage({
             href={href({ kind: 'OUT' })}
             className={kindFilter === 'OUT' ? 'pill pill-out' : 'pill pill-muted'}
           >
-            Pengeluaran
+            Uang keluar
           </Link>
           <Link
             href={href({ kind: 'IN' })}
             className={kindFilter === 'IN' ? 'pill pill-in' : 'pill pill-muted'}
           >
-            Pemasukan
+            Uang masuk
           </Link>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default async function HistoryPage({
       {rows.length === 0 ? (
         <div className="empty-state">
           <p className="empty-title">Belum ada catatan di rentang ini.</p>
-          <p className="empty-desc">Coba perlebar rentang waktunya.</p>
+          <p className="empty-desc">Coba pilih rentang waktu yang lebih panjang.</p>
         </div>
       ) : (
         <ul className="tx-list">

@@ -20,23 +20,25 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
     const user = await requireCurrentUser()
 
     const dailyLivingCost = positiveInt(formData.get('daily_living_cost'), 'Biaya hidup harian')
-    const bufferDays = positiveInt(formData.get('buffer_days'), 'Hari penyangga')
+    const bufferDays = positiveInt(formData.get('buffer_days'), 'Dana cadangan untuk berapa hari')
     const bufferFillPercent = positiveInt(
       formData.get('buffer_fill_percent'),
-      'Porsi pengisian penyangga',
+      'Porsi uang masuk untuk dana cadangan',
     )
     const allowanceHorizonDays = positiveInt(
       formData.get('allowance_horizon_days'),
-      'Horizon jatah',
+      'Uang dibagi untuk berapa hari',
     )
     const allowanceMin = positiveInt(formData.get('allowance_min'), 'Jatah minimum')
     const allowanceMax = positiveInt(formData.get('allowance_max'), 'Jatah maksimum')
 
-    if (bufferDays < 1) throw new Error('Hari penyangga minimal 1.')
-    if (allowanceHorizonDays < 1) throw new Error('Horizon jatah minimal 1.')
+    if (bufferDays < 1) throw new Error('Dana cadangan minimal untuk 1 hari.')
+    if (allowanceHorizonDays < 1) throw new Error('Uang harus dibagi untuk minimal 1 hari.')
     // 100% berarti jatah harian nol lagi — persis kebuntuan yang mau dihindari.
     if (bufferFillPercent > 90) {
-      throw new Error('Porsi pengisian penyangga maksimal 90%, supaya jatah harian tetap ada.')
+      throw new Error(
+        'Porsi untuk dana cadangan paling banyak 90%, supaya jatah harian tetap ada.',
+      )
     }
     if (allowanceMin > allowanceMax) {
       throw new Error('Jatah minimum tidak boleh melebihi jatah maksimum.')
@@ -53,7 +55,7 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
         allowanceMax,
         obligationHorizonDays: positiveInt(
           formData.get('obligation_horizon_days') ?? '30',
-          'Horizon kewajiban',
+          'Tagihan berapa hari ke depan yang disisihkan',
         ),
         // Onboarding dianggap selesai begitu biaya hidup harian terisi.
         onboardedAt: dailyLivingCost > 0 ? (user.settings.onboardedAt ?? new Date()) : null,

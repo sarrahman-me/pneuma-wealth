@@ -52,6 +52,13 @@ Aplikasi web Next.js (App Router) dengan Postgres via Drizzle.
   di bawah itu Safari iOS memperbesar layar sendiri saat field disentuh.
 - Nada coaching tetap tenang dan selalu berakhir dengan satu langkah konkret.
   Peringatan yang menghakimi membuat aplikasi ini ditinggalkan.
+- Teks yang dibaca pengguna memakai bahasa Indonesia sehari-hari. Hindari
+  istilah teknis dan serapan keuangan: bukan "runway" tapi "uangnya cukup
+  untuk N hari", bukan "penyangga" tapi "dana cadangan", bukan "horizon" tapi
+  "untuk berapa hari ke depan", bukan "biaya tetap" tapi "tagihan rutin",
+  bukan "saldo likuid" tapi "uang yang ada", bukan "kewajiban terjadwal" tapi
+  "tagihan". Nama variabel dan kolom database boleh tetap memakai istilah
+  aslinya; yang diterjemahkan hanya yang tampil di layar.
 
 ## Commit
 

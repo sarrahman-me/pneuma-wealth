@@ -17,16 +17,16 @@ const refresh = () => {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** Memastikan biaya tetap benar-benar milik pengguna ini. */
+/** Memastikan tagihan rutin benar-benar milik pengguna ini. */
 const ownedFixedCost = async (userId: string, id: string) => {
-  if (!UUID_PATTERN.test(id)) throw new Error('Biaya tetap tidak ditemukan.')
+  if (!UUID_PATTERN.test(id)) throw new Error('Tagihan rutin tidak ditemukan.')
 
   const [cost] = await getDb()
     .select()
     .from(fixedCosts)
     .where(and(eq(fixedCosts.id, id), eq(fixedCosts.userId, userId)))
     .limit(1)
-  if (!cost) throw new Error('Biaya tetap tidak ditemukan.')
+  if (!cost) throw new Error('Tagihan rutin tidak ditemukan.')
   return cost
 }
 
@@ -40,7 +40,7 @@ const RECURRENCES: Recurrence[] = ['daily', 'weekly', 'monthly', 'yearly']
 const parseSchedule = (formData: FormData) => {
   const raw = String(formData.get('recurrence') ?? 'monthly')
   const recurrence = RECURRENCES.find((candidate) => candidate === raw)
-  if (!recurrence) throw new Error('Siklus tidak dikenali.')
+  if (!recurrence) throw new Error('Pengulangannya tidak dikenali.')
 
   if (recurrence === 'daily') {
     return { recurrence, dueDay: 1, dueMonth: 1 }
@@ -75,7 +75,7 @@ export const addFixedCost = async (formData: FormData): Promise<ActionResult> =>
     const name = String(formData.get('name') ?? '').trim()
     const amount = Math.trunc(Number(String(formData.get('amount') ?? '').replace(/[^\d]/g, '')))
 
-    if (!name) throw new Error('Nama biaya tetap wajib diisi.')
+    if (!name) throw new Error('Nama tagihan wajib diisi.')
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Jumlah harus lebih dari 0.')
 
     await getDb()
@@ -103,7 +103,7 @@ export const updateFixedCost = async (formData: FormData): Promise<ActionResult>
     const name = String(formData.get('name') ?? '').trim()
     const amount = Math.trunc(Number(String(formData.get('amount') ?? '').replace(/[^\d]/g, '')))
 
-    if (!name) throw new Error('Nama biaya tetap wajib diisi.')
+    if (!name) throw new Error('Nama tagihan wajib diisi.')
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Jumlah harus lebih dari 0.')
 
     await getDb()

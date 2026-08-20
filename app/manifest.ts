@@ -16,7 +16,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'PNEUMA',
     description:
       'Asisten keuangan harian yang bicara sebelum uang keluar: jatah harian, ' +
-      'biaya tetap, dan masa tunggu untuk keinginan.',
+      'tagihan rutin, dan masa tunggu untuk keinginan.',
     lang: 'id',
     dir: 'ltr',
     start_url: '/',

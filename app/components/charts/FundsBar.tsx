@@ -24,13 +24,13 @@ export default function FundsBar({ funds }: { funds: Funds }) {
   const segments: Segment[] = [
     {
       key: 'obligations',
-      label: 'Tagihan terjadwal',
+      label: 'Tagihan',
       amount: funds.scheduledObligations,
       className: 'seg seg-obligation',
     },
     {
       key: 'buffer',
-      label: 'Ditahan untuk penyangga',
+      label: 'Dana cadangan',
       amount: funds.reserved,
       className: 'seg seg-buffer',
     },
@@ -47,8 +47,8 @@ export default function FundsBar({ funds }: { funds: Funds }) {
   return (
     <figure className="chart chart-compact">
       <figcaption className="chart-head">
-        <span className="chart-title">Ke mana uangmu sudah dijanjikan</span>
-        <span className="chart-note">Saldo likuid {formatRupiah(funds.liquidBalance)}</span>
+        <span className="chart-title">Uangmu sudah dipesan untuk apa saja</span>
+        <span className="chart-note">Uang yang ada {formatRupiah(funds.liquidBalance)}</span>
       </figcaption>
 
       <div

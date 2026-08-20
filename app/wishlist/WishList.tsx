@@ -50,7 +50,7 @@ function WaitingRow({ wish }: { wish: WishView }) {
             </label>
             <label>
               Alasan
-              <input name="note" defaultValue={wish.note ?? ''} placeholder="Opsional" />
+              <input name="note" defaultValue={wish.note ?? ''} placeholder="Boleh dikosongkan" />
             </label>
           </div>
 
@@ -58,8 +58,8 @@ function WaitingRow({ wish }: { wish: WishView }) {
               mengabaikan suntingan: menurunkan harga memang tidak memendekkan
               jeda yang sedang berjalan. */}
           <p className="helper-text">
-            Menaikkan harga bisa memperpanjang masa tunggu. Menurunkannya tidak
-            memperpendek tunggu yang sedang berjalan.
+            Kalau harganya dinaikkan, masa tunggunya bisa bertambah. Kalau diturunkan,
+            tunggu yang sedang berjalan tidak jadi lebih pendek.
           </p>
 
           <div className="row-editor-actions">
@@ -88,7 +88,9 @@ function WaitingRow({ wish }: { wish: WishView }) {
     <li className={wish.ready ? 'wish-row wish-ready' : 'wish-row'}>
       <div className="wish-main">
         <p className="wish-name">{wish.name}</p>
-        <p className="wish-cost">{cost || 'Isi biaya hidup harian untuk melihat harganya dalam hari.'}</p>
+        <p className="wish-cost">
+          {cost || 'Isi biaya hidup harian dulu supaya harganya bisa dibaca dalam hari.'}
+        </p>
         {buyState && !buyState.ok ? <p className="alert-error">{buyState.error}</p> : null}
         {releaseState && !releaseState.ok ? (
           <p className="alert-error">{releaseState.error}</p>
@@ -173,8 +175,8 @@ export default function WishList({
       <section className="wish-form">
         <h2>Catat keinginan</h2>
         <p className="helper-text">
-          Tulis dulu, jangan beli dulu. Lama tunggunya ditentukan seberapa besar
-          keinginan ini dibanding jatah harianmu.
+          Tulis dulu, jangan langsung beli. Makin besar harganya dibanding jatah
+          harianmu, makin lama nunggunya.
         </p>
         <form action={formAction}>
           <div className="form-grid">
@@ -188,7 +190,7 @@ export default function WishList({
             </label>
             <label>
               Alasan
-              <input name="note" placeholder="Opsional" />
+              <input name="note" placeholder="Boleh dikosongkan" />
             </label>
           </div>
           <button type="submit" className="btn btn-cta" disabled={pending}>
@@ -204,7 +206,7 @@ export default function WishList({
           <div className="empty-state">
             <p className="empty-title">Tidak ada keinginan yang sedang ditahan.</p>
             <p className="empty-desc">
-              Lain kali dorongan membeli datang, catat di sini dulu.
+              Lain kali kepingin sesuatu, catat di sini dulu.
             </p>
           </div>
         ) : (

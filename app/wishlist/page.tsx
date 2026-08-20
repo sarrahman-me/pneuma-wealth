@@ -69,23 +69,23 @@ export default async function WishlistPage() {
     <main>
       <h1>Keinginan</h1>
       <p>
-        Halaman ini satu-satunya tempat aplikasi ikut campur sebelum uang keluar.
-        Sisanya hanya mencatat yang sudah lewat.
+        Cuma di halaman ini aplikasi ikut campur sebelum uang keluar. Sisanya hanya
+        mencatat yang sudah terjadi.
       </p>
 
       <section className="wish-summary">
         <div>
           <p className="metric-title">Sedang ditahan</p>
           <p className="metric-value">{formatRupiah(waitingTotal)}</p>
-          <p className="metric-desc">{waiting.length} keinginan menunggu keputusan.</p>
+          <p className="metric-desc">{waiting.length} keinginan masih ditunggu.</p>
         </div>
         <div>
-          <p className="metric-title">Berhasil dilepaskan</p>
+          <p className="metric-title">Batal dibeli</p>
           <p className="metric-value">{formatRupiah(releasedTotal)}</p>
           <p className="metric-desc">
             {released.length > 0
-              ? 'Uang yang tidak jadi keluar karena kamu menunggu.'
-              : 'Belum ada. Akan muncul setelah keinginan pertama dilepaskan.'}
+              ? 'Uang yang tidak jadi keluar karena kamu mau menunggu.'
+              : 'Belum ada. Nanti muncul setelah keinginan pertama kamu lepaskan.'}
           </p>
         </div>
       </section>

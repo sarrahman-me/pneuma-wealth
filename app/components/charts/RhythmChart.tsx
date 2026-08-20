@@ -39,7 +39,7 @@ export default function RhythmChart({ days }: { days: DayPoint[] }) {
   return (
     <figure className="chart">
       <figcaption className="chart-head">
-        <span className="chart-title">Ritme 14 hari</span>
+        <span className="chart-title">14 hari terakhir</span>
         <span className="chart-note">
           Total {formatRupiah(totalSpent)} · {overDays} hari melewati jatah
         </span>
@@ -49,7 +49,7 @@ export default function RhythmChart({ days }: { days: DayPoint[] }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="chart-svg"
         role="img"
-        aria-label={`Pengeluaran harian 14 hari terakhir, total ${formatRupiah(totalSpent)}, ${overDays} hari melewati jatah.`}
+        aria-label={`Belanja harian 14 hari terakhir, total ${formatRupiah(totalSpent)}, ${overDays} hari melewati jatah.`}
       >
         {days.map((day, index) => {
           const height = Math.max(0, plotHeight * (day.spent / ceiling))

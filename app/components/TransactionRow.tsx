@@ -49,7 +49,7 @@ export default function TransactionRow({
   const meta = [
     showDate ? formatShortDate(transaction.dateLocal) : null,
     transaction.categoryName,
-    transaction.source === 'fixed_cost' ? 'Biaya tetap' : null,
+    transaction.source === 'fixed_cost' ? 'Tagihan rutin' : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -93,7 +93,7 @@ export default function TransactionRow({
               <input
                 name="description"
                 defaultValue={transaction.description ?? ''}
-                placeholder="Opsional"
+                placeholder="Boleh dikosongkan"
               />
             </label>
           </div>
@@ -136,8 +136,8 @@ export default function TransactionRow({
       </span>
 
       <div className="tx-actions">
-        {/* Pembayaran biaya tetap diubah dari halaman Biaya Tetap supaya
-            catatan lunasnya ikut menyesuaikan, bukan ditinggalkan. */}
+        {/* Pembayaran tagihan rutin diubah dari halaman Tagihan Rutin supaya
+            tanda sudah dibayarnya ikut menyesuaikan, bukan ditinggalkan. */}
         {transaction.source === 'manual' ? (
           <button type="button" className="link-button" onClick={() => setEditing(true)}>
             Ubah

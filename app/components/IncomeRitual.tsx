@@ -21,14 +21,14 @@ export default function IncomeRitual({
       key: 'obligations',
       label: 'Menutup tagihan',
       amount: plan.toObligations,
-      desc: 'Sudah punya nama sejak sebelum masuk.',
+      desc: 'Sudah ada yang menunggu sebelum uangnya masuk.',
       className: 'split-part split-obligation',
     },
     {
       key: 'buffer',
-      label: 'Mengisi penyangga',
+      label: 'Mengisi dana cadangan',
       amount: plan.toBuffer,
-      desc: 'Yang menjaga hari-hari tanpa pemasukan.',
+      desc: 'Bekal untuk hari-hari tanpa uang masuk.',
       className: 'split-part split-buffer',
     },
     {
@@ -45,7 +45,7 @@ export default function IncomeRitual({
       <p className="ritual-eyebrow">Uang masuk hari ini</p>
       <h2 className="ritual-amount">{formatRupiah(plan.amount)}</h2>
       <p className="ritual-lead">
-        Sebagian besar sudah punya nama. Ini pembagiannya sebelum sempat terasa
+        Sebagian besar sudah ada tujuannya. Ini pembagiannya, sebelum keburu terasa
         seperti uang bebas.
       </p>
 
@@ -64,13 +64,13 @@ export default function IncomeRitual({
           Jatah harian naik dari {formatRupiah(plan.dailyBefore)} jadi{' '}
           <strong>{formatRupiah(plan.dailyAfter)}</strong>.
           {plan.coversDays !== null
-            ? ` Pemasukan ini membeli ${plan.coversDays} hari hidup.`
+            ? ` Uang ini cukup untuk hidup ${plan.coversDays} hari.`
             : ''}
         </p>
         {cadence.typicalGap !== null ? (
           <p className="ritual-warn">
-            Pemasukan berikutnya biasanya {cadence.typicalGap} hari lagi. Uang ini
-            harus sampai ke sana.
+            Biasanya uang baru masuk lagi {cadence.typicalGap} hari lagi. Uang ini harus
+            sampai ke sana.
           </p>
         ) : null}
       </div>

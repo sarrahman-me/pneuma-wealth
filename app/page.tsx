@@ -75,8 +75,8 @@ export default async function Home() {
 
       {user.settings.dailyLivingCost <= 0 ? (
         <p className="soft-warn">
-          Biaya hidup harian belum diisi, jadi penyangga dan runway belum bisa dihitung.{' '}
-          <Link href="/rules">Isi sekarang</Link>.
+          Biaya hidup harian belum diisi, jadi dana cadangan dan perkiraan uangmu cukup
+          sampai kapan belum bisa dihitung. <Link href="/rules">Isi sekarang</Link>.
         </p>
       ) : null}
 
@@ -104,11 +104,11 @@ export default async function Home() {
           </div>
 
           <div className="hero-card">
-            <p className="hero-label">Runway</p>
+            <p className="hero-label">Uangnya cukup untuk</p>
             <p className="hero-value">
               {funds.runwayDays !== null ? `${funds.runwayDays} hari` : '—'}
             </p>
-            <p className="helper-text">Tanpa pemasukan baru, setelah tagihan lunas.</p>
+            <p className="helper-text">Kalau tidak ada uang masuk lagi, setelah tagihan lunas.</p>
           </div>
         </div>
       </section>
@@ -116,11 +116,11 @@ export default async function Home() {
       {pace.daysElapsed !== null ? (
         <section className="pace-strip">
           <div className="pace-item">
-            <span className="pace-label">Siklus berjalan</span>
+            <span className="pace-label">Sejak uang masuk</span>
             <span className="pace-value">hari ke-{pace.daysElapsed}</span>
           </div>
           <div className="pace-item">
-            <span className="pace-label">Laju vs rencana</span>
+            <span className="pace-label">Kecepatan belanja</span>
             <span
               className={
                 pace.paceRatio !== null && pace.paceRatio > 1.2
@@ -145,7 +145,7 @@ export default async function Home() {
           </div>
           {pace.expectedCycleDays !== null ? (
             <div className="pace-item">
-              <span className="pace-label">Pemasukan biasanya</span>
+              <span className="pace-label">Uang masuk biasanya</span>
               <span className="pace-value">{pace.expectedCycleDays} hari sekali</span>
             </div>
           ) : null}
@@ -162,7 +162,7 @@ export default async function Home() {
         <div>
           <h2>Ada yang ingin dibeli?</h2>
           <p className="helper-text">
-            Catat dulu, tahan sebentar. Yang bertahan melewati jedanya memang layak dibeli.
+            Catat dulu, tahan sebentar. Kalau setelah ditunggu masih mau, berarti memang perlu.
             {stats.wishWaitingCount > 0
               ? ` Sekarang ada ${stats.wishWaitingCount} yang sedang ditahan.`
               : ''}
@@ -189,7 +189,7 @@ export default async function Home() {
         {todayTransactions.length === 0 ? (
           <div className="empty-state">
             <p className="empty-title">Belum ada catatan hari ini.</p>
-            <p className="empty-desc">Satu catatan sudah cukup untuk menjaga ritme.</p>
+            <p className="empty-desc">Satu catatan saja sudah cukup untuk menjaga kebiasaan.</p>
           </div>
         ) : (
           <ul>

@@ -20,7 +20,7 @@ const PRIMARY = [
   { href: '/', label: 'Beranda', icon: HomeIcon },
   { href: '/history', label: 'Riwayat', icon: ListIcon },
   { href: '/wishlist', label: 'Keinginan', icon: StarIcon },
-  { href: '/fixed-costs', label: 'Biaya Tetap', icon: RepeatIcon },
+  { href: '/fixed-costs', label: 'Tagihan', icon: RepeatIcon },
   { href: '/summary', label: 'Ringkasan', icon: ChartIcon },
 ] as const
 

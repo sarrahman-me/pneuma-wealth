@@ -57,7 +57,7 @@ export default function BurnChart({
   return (
     <figure className="chart">
       <figcaption className="chart-head">
-        <span className="chart-title">Sejak pemasukan terakhir</span>
+        <span className="chart-title">Sejak uang terakhir masuk</span>
         <span className="chart-note">
           {formatRupiah(pace.spentSinceIncome)} terpakai dalam {pace.daysElapsed} hari
         </span>
@@ -67,7 +67,7 @@ export default function BurnChart({
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="chart-svg"
         role="img"
-        aria-label={`Pengeluaran kumulatif ${formatRupiah(pace.spentSinceIncome)} dalam ${pace.daysElapsed} hari, dibanding rencana ${formatRupiah(pace.plannedSoFar ?? 0)}.`}
+        aria-label={`Total belanja ${formatRupiah(pace.spentSinceIncome)} dalam ${pace.daysElapsed} hari, dibanding rencana ${formatRupiah(pace.plannedSoFar ?? 0)}.`}
       >
         {pace.expectedCycleDays !== null && pace.expectedCycleDays <= horizon ? (
           <g>
@@ -121,7 +121,7 @@ export default function BurnChart({
 
       <div className="chart-legend">
         <span className="legend-item">
-          <i className="swatch swatch-spent" /> Terpakai kumulatif
+          <i className="swatch swatch-spent" /> Total yang sudah terpakai
         </span>
         <span className="legend-item">
           <i className="swatch swatch-plan" /> Kalau sesuai jatah harian

@@ -20,7 +20,7 @@ const SECTIONS = [
   { id: 'grafik', label: 'Membaca grafik' },
   { id: 'kerja-sama', label: 'Pembagian tugas' },
   { id: 'aneh', label: 'Kalau angkanya terasa aneh' },
-  { id: 'istilah', label: 'Istilah' },
+  { id: 'istilah', label: 'Arti kata-kata di sini' },
 ]
 
 export default async function GuidePage() {
@@ -36,7 +36,7 @@ export default async function GuidePage() {
             done: user.settings.dailyLivingCost > 0,
             doneNote: `Terisi ${formatRupiah(user.settings.dailyLivingCost)} per hari.`,
             todoNote:
-              'Tanpa angka ini, aplikasi tidak bisa menghitung apa pun tentang rasa aman.',
+              'Tanpa angka ini, aplikasi tidak bisa menghitung apa-apa soal rasa aman.',
             href: '/rules',
             hrefLabel: 'Buka Aturan',
           },
@@ -44,11 +44,11 @@ export default async function GuidePage() {
             id: 'biaya-tetap',
             title: 'Daftarkan tagihan rutin',
             done: state.obligations.unpaidCount > 0 || state.funds.scheduledObligations > 0,
-            doneNote: `${state.obligations.unpaidCount} tagihan tercatat dan sudah disisihkan.`,
+            doneNote: `${state.obligations.unpaidCount} tagihan tercatat dan uangnya sudah dipisahkan.`,
             todoNote:
-              'Sewa, listrik, internet, cicilan. Uangnya langsung dipisahkan supaya tidak ikut terbelanjakan.',
+              'Kontrakan, listrik, internet, cicilan. Uangnya langsung dipisahkan supaya tidak ikut terbelanjakan.',
             href: '/fixed-costs',
-            hrefLabel: 'Buka Biaya Tetap',
+            hrefLabel: 'Buka Tagihan Rutin',
           },
           {
             id: 'catat',
@@ -62,13 +62,13 @@ export default async function GuidePage() {
           },
           {
             id: 'ritme',
-            title: 'Biarkan aplikasi belajar ritme pemasukanmu',
+            title: 'Biarkan aplikasi mengenali pola uang masukmu',
             done: state.cadence.confident,
             doneNote:
               state.cadence.medianGap !== null
-                ? `Sudah terbaca: pemasukan datang sekitar ${state.cadence.medianGap} hari sekali.`
-                : 'Sudah terbaca.',
-            todoNote: `Butuh empat kali pemasukan tercatat. Sekarang baru ${state.cadence.count}.`,
+                ? `Sudah kebaca: uang masuk sekitar ${state.cadence.medianGap} hari sekali.`
+                : 'Sudah kebaca.',
+            todoNote: `Butuh empat kali uang masuk tercatat. Sekarang baru ${state.cadence.count}.`,
             href: '/summary',
             hrefLabel: 'Lihat Ringkasan',
           },
@@ -111,33 +111,33 @@ export default async function GuidePage() {
           <li>
             <h3>Isi biaya hidup harian</h3>
             <p>
-              Perkiraan kasar biaya <em>bertahan hidup</em> per hari: makan, transport,
-              hal-hal yang tidak bisa dilewati. Bukan gaya hidup, bukan target hemat.
-              Kalau ragu, ambil angka yang sedikit lebih besar — lebih aman.
+              Kira-kira berapa yang kamu butuhkan sehari untuk <em>bertahan hidup</em>:
+              makan, transport, hal-hal yang tidak bisa dilewati. Bukan gaya hidup, bukan
+              target hemat. Kalau ragu, ambil angka yang agak lebih besar — lebih aman.
             </p>
             <p className="guide-note">
               Angka ini dipakai untuk menghitung berapa lama kamu bisa bertahan, dan
-              untuk menerjemahkan harga jadi &ldquo;berapa hari hidup&rdquo;. Angka ini
+              untuk mengubah harga jadi &ldquo;berapa hari hidup&rdquo;. Angka ini
               <strong> tidak</strong> menentukan jatah belanjamu.
             </p>
           </li>
           <li>
             <h3>Daftarkan tagihan rutin</h3>
             <p>
-              Sewa, listrik, internet, cicilan — apa pun yang datang tiap bulan. Begitu
-              didaftarkan, uangnya langsung dianggap bukan milikmu lagi, bahkan sebelum
-              dibayar.
+              Kontrakan, listrik, internet, cicilan — apa pun yang datang tiap bulan.
+              Begitu didaftarkan, uangnya langsung dianggap bukan hakmu lagi, walaupun
+              belum dibayar.
             </p>
             <p className="guide-note">
-              Karena itu, saat kamu membayarnya nanti, jatah harianmu tidak ikut jatuh.
-              Uangnya memang sudah disisihkan sejak awal.
+              Karena itu, waktu kamu bayar nanti, jatah harianmu tidak ikut anjlok.
+              Uangnya memang sudah dipisahkan sejak awal.
             </p>
           </li>
           <li>
             <h3>Biarkan sisanya apa adanya</h3>
             <p>
-              Setelan lain di halaman Aturan sudah punya nilai bawaan yang masuk akal.
-              Jangan diubah sampai kamu punya alasan. Aplikasi akan memberi tahu kalau
+              Setelan lain di halaman Aturan sudah diisi angka yang masuk akal. Biarkan
+              saja sampai kamu punya alasan mengubahnya. Aplikasi akan memberi tahu kalau
               ada yang sebaiknya disesuaikan.
             </p>
           </li>
@@ -199,17 +199,17 @@ export default async function GuidePage() {
 
             <dt>Bayar tagihan rutin, dicatat di mana?</dt>
             <dd>
-              Bukan di Beranda. Buka <Link href="/fixed-costs">Biaya Tetap</Link> lalu
-              tekan &ldquo;Tandai lunas&rdquo;. Kalau dicatat sebagai pengeluaran biasa,
-              uangnya terhitung dua kali dan jatahmu jadi salah.
+              Bukan di Beranda. Buka <Link href="/fixed-costs">Tagihan Rutin</Link> lalu
+              tekan &ldquo;Sudah dibayar&rdquo;. Kalau dicatat sebagai pengeluaran biasa,
+              uangnya terhitung dua kali dan jatahmu jadi keliru.
             </dd>
 
             <dt>Tagihanku ada yang mingguan dan tahunan, bukan bulanan?</dt>
             <dd>
-              Pilih siklusnya saat menambah di Biaya Tetap: harian, mingguan, bulanan,
-              atau tahunan. Yang disisihkan adalah setiap kali tagihan itu jatuh tempo
-              dalam horizon kewajibanmu — jadi langganan mingguan disisihkan empat kali
-              sebulan, dan tagihan tahunan baru disisihkan saat waktunya sudah dekat.
+              Pilih pengulangannya waktu menambah di Tagihan Rutin: setiap hari, minggu,
+              bulan, atau tahun. Yang dipisahkan adalah setiap kali tagihan itu jatuh tempo
+              dalam beberapa hari ke depan — jadi langganan mingguan dipisahkan empat kali
+              sebulan, dan tagihan tahunan baru dipisahkan kalau waktunya sudah dekat.
             </dd>
 
             <dt>Salah catat?</dt>
@@ -227,44 +227,42 @@ export default async function GuidePage() {
       <section id="uang-masuk" className="guide-section">
         <h2>3. Saat uang masuk</h2>
         <p>
-          Ini hari paling menentukan, dan justru paling sering diremehkan. Angka besar
-          di rekening terasa seperti uang bebas, padahal sebagian besar sudah punya
-          pemilik.
+          Ini hari yang paling menentukan, dan justru paling sering disepelekan. Angka
+          besar di rekening terasa seperti uang bebas, padahal sebagian besar sudah ada
+          yang punya.
         </p>
         <ol className="guide-steps">
           <li>
             <h3>Catat pemasukannya</h3>
             <p>
-              Di Beranda, pindahkan tombol dari <strong>Pengeluaran</strong> ke{' '}
-              <strong>Pemasukan</strong>, isi jumlahnya, Simpan.
+              Di Beranda, pindahkan tombol dari <strong>Uang keluar</strong> ke{' '}
+              <strong>Uang masuk</strong>, isi jumlahnya, Simpan.
             </p>
           </li>
           <li>
             <h3>Baca kartu yang muncul</h3>
             <p>
-              Aplikasi langsung memecah uang itu di depan matamu: berapa untuk menutup
-              tagihan, berapa mengisi dana cadangan, berapa yang benar-benar boleh
+              Aplikasi langsung membagi uang itu di depan matamu: berapa untuk bayar
+              tagihan, berapa untuk mengisi dana cadangan, berapa yang benar-benar boleh
               dibelanjakan — dan berapa jatah harianmu sekarang.
             </p>
           </li>
           <li>
             <h3>Jangan belanja besar hari itu</h3>
             <p>
-              Ini satu-satunya saran yang bersifat perilaku di panduan ini, dan yang
-              paling menentukan. Uang yang baru masuk terasa jauh lebih banyak daripada
-              yang sebenarnya. Kalau ada yang ingin dibeli, masukkan ke daftar keinginan
-              dulu.
+              Ini satu-satunya saran soal kebiasaan di panduan ini, dan yang paling
+              menentukan. Uang yang baru masuk selalu terasa jauh lebih banyak dari yang
+              sebenarnya. Kalau ada yang ingin dibeli, masukkan ke daftar Keinginan dulu.
             </p>
           </li>
         </ol>
         <div className="guide-callout">
           <h3>Kenapa jatah harian tidak melonjak setinggi yang diharapkan</h3>
           <p>
-            Karena uang itu harus bertahan sampai pemasukan berikutnya, dan aplikasi
-            tahu dari riwayatmu berapa lama biasanya jeda itu. Kalau pemasukan datang
-            tiap 42 hari, uangnya dibagi 42 hari — bukan 30. Membagi lebih cepat dari
-            datangnya pemasukan adalah cara paling pasti untuk kehabisan di tengah
-            jalan.
+            Karena uang itu harus cukup sampai uang masuk berikutnya, dan aplikasi tahu
+            dari riwayatmu berapa lama biasanya jaraknya. Kalau uang masuk tiap 42 hari,
+            uangnya dibagi 42 hari — bukan 30. Membagi lebih cepat dari datangnya uang
+            berikutnya adalah cara paling pasti untuk kehabisan di tengah jalan.
           </p>
         </div>
       </section>
@@ -274,7 +272,7 @@ export default async function GuidePage() {
         <p>
           Halaman <Link href="/wishlist">Keinginan</Link> adalah satu-satunya tempat
           aplikasi ini ikut campur <em>sebelum</em> uang keluar. Sisanya hanya mencatat
-          yang sudah lewat.
+          yang sudah terjadi.
         </p>
         <ol className="guide-steps">
           <li>
@@ -287,9 +285,9 @@ export default async function GuidePage() {
           <li>
             <h3>Tunggu</h3>
             <p>
-              Aplikasi menahannya 1 sampai 7 hari, tergantung seberapa besar dibanding
-              jatah harianmu. Makin besar, makin lama. Selama menunggu, kamu bisa
-              melihat harganya diterjemahkan jadi &ldquo;berapa hari hidup&rdquo;.
+              Aplikasi menahannya 1 sampai 7 hari, tergantung seberapa besar harganya
+              dibanding jatah harianmu. Makin besar, makin lama. Selama menunggu, harganya
+              ditampilkan juga sebagai &ldquo;berapa hari hidup&rdquo;.
             </p>
           </li>
           <li>
@@ -305,9 +303,9 @@ export default async function GuidePage() {
         <div className="guide-callout">
           <p>
             Yang kamu lepaskan tidak dihapus. Jumlahnya dikumpulkan sebagai{' '}
-            <strong>uang yang tidak jadi keluar karena kamu menunggu</strong>. Itu satu-
-            satunya angka di aplikasi ini yang murni hasil menahan diri, dan biasanya
-            jauh lebih besar dari dugaan.
+            <strong>uang yang tidak jadi keluar karena kamu mau menunggu</strong>. Cuma
+            angka ini di seluruh aplikasi yang murni hasil menahan diri, dan biasanya jauh
+            lebih besar dari yang kamu kira.
           </p>
         </div>
       </section>
@@ -317,8 +315,8 @@ export default async function GuidePage() {
         <dl className="guide-glossary">
           <dt>Boleh dipakai hari ini</dt>
           <dd>
-            Satu-satunya angka yang perlu kamu ingat. Sudah memperhitungkan tagihan yang
-            belum dibayar, dana cadangan, dan sisa atau kelebihan kemarin.
+            Satu-satunya angka yang perlu kamu ingat. Tagihan yang belum dibayar, dana
+            cadangan, serta sisa atau kelebihan kemarin sudah ikut dihitung di sini.
           </dd>
 
           <dt>Sisa</dt>
@@ -327,26 +325,26 @@ export default async function GuidePage() {
             angka besar menunjukkan hal yang sama secara sekilas.
           </dd>
 
-          <dt>Runway</dt>
+          <dt>Uangnya cukup untuk</dt>
           <dd>
-            Berapa hari kamu bisa bertahan tanpa pemasukan baru sama sekali, setelah
-            semua tagihan lunas. Ini angka rasa aman, bukan angka belanja.
+            Berapa hari kamu masih bisa hidup kalau tidak ada uang masuk sama sekali,
+            setelah semua tagihan dibayar. Ini angka rasa aman, bukan angka belanja.
           </dd>
 
-          <dt>Siklus berjalan</dt>
+          <dt>Sejak uang masuk</dt>
           <dd>Sudah hari ke berapa sejak uang terakhir masuk.</dd>
 
-          <dt>Laju vs rencana</dt>
+          <dt>Kecepatan belanja</dt>
           <dd>
-            1× berarti kamu belanja persis sesuai rencana. 2× berarti dua kali lebih
-            cepat. Angka ini berubah merah kalau mulai mengkhawatirkan.
+            1× berarti belanjamu pas sesuai rencana. 2× berarti dua kali lebih cepat.
+            Angkanya berubah merah kalau sudah mulai mengkhawatirkan.
           </dd>
 
           <dt>Habis dalam</dt>
           <dd>
-            Kalau kamu terus belanja dengan kecepatan sekarang, uangnya habis dalam
-            sekian hari. Bandingkan dengan &ldquo;Pemasukan biasanya&rdquo; di
-            sebelahnya — kalau angka ini lebih kecil, ada lubang yang perlu ditutup.
+            Kalau belanjamu segini terus, uangnya habis dalam sekian hari. Bandingkan
+            dengan &ldquo;Uang masuk biasanya&rdquo; di sebelahnya — kalau angka ini lebih
+            kecil, ada lubang yang perlu ditutup.
           </dd>
         </dl>
       </section>
@@ -354,35 +352,33 @@ export default async function GuidePage() {
       <section id="grafik" className="guide-section">
         <h2>6. Membaca grafik</h2>
         <dl className="guide-glossary">
-          <dt>Sejak pemasukan terakhir</dt>
+          <dt>Sejak uang terakhir masuk</dt>
           <dd>
-            Garis tebal adalah uang yang sudah kamu pakai, menumpuk dari hari uang
-            masuk. Garis putus-putus adalah rencananya. Kalau garis tebal menanjak
-            curam di kiri lalu jauh di atas garis putus-putus, itulah bentuk visual dari
-            &ldquo;habis di minggu pertama&rdquo;. Garis tegak di kanan menandai kapan
-            pemasukan berikutnya biasanya datang.
+            Garis tebal adalah uang yang sudah kamu pakai, menumpuk sejak hari uang masuk.
+            Garis putus-putus adalah rencananya. Kalau garis tebal menanjak curam di kiri
+            lalu jauh di atas garis putus-putus, begitulah rupanya &ldquo;habis di minggu
+            pertama&rdquo;. Garis tegak di kanan menandai kapan biasanya uang masuk lagi.
           </dd>
 
-          <dt>Ritme 14 hari</dt>
+          <dt>14 hari terakhir</dt>
           <dd>
-            Satu batang per hari. Batang merah berarti hari itu melewati jatah. Beberapa
-            batang merah tidak masalah; yang perlu diperhatikan adalah kalau semuanya
+            Satu batang untuk satu hari. Batang merah berarti hari itu lewat dari jatah.
+            Beberapa batang merah tidak apa-apa; yang perlu diperhatikan kalau semuanya
             menumpuk di awal.
           </dd>
 
-          <dt>Ke mana uangmu sudah dijanjikan</dt>
+          <dt>Uangmu sudah dipesan untuk apa saja</dt>
           <dd>
-            Di halaman <Link href="/summary">Ringkasan</Link>. Satu batang yang dipecah
+            Di halaman <Link href="/summary">Ringkasan</Link>. Satu batang yang dibagi
             tiga: tagihan, dana cadangan, dan bagian yang boleh dibelanjakan. Biasanya
             bagian terakhir jauh lebih kecil dari yang terasa.
           </dd>
 
-          <dt>Jeda antar pemasukan</dt>
+          <dt>Jarak antar uang masuk</dt>
           <dd>
-            Juga di Ringkasan. Tiap batang adalah satu jeda yang pernah kamu alami.
-            Batang paling kanan bergaris-garis: itu jeda yang sedang berjalan sekarang.
-            Kalau sudah melewati garis putus-putus, jeda kali ini lebih panjang dari
-            biasanya.
+            Juga di Ringkasan. Tiap batang adalah satu jarak yang pernah kamu alami.
+            Batang paling kanan bergaris-garis: itu jarak yang sedang berjalan sekarang.
+            Kalau sudah lewat dari garis putus-putus, kali ini lebih lama dari biasanya.
           </dd>
         </dl>
       </section>
@@ -398,14 +394,14 @@ export default async function GuidePage() {
           <article>
             <h3>Tugas aplikasi</h3>
             <ul>
-              <li>Menyisihkan uang tagihan sebelum kamu sempat memakainya.</li>
-              <li>Menghitung batas harian yang jujur, dan menguncinya supaya stabil.</li>
+              <li>Memisahkan uang tagihan sebelum kamu sempat memakainya.</li>
+              <li>Menghitung batas harian yang jujur, dan menguncinya supaya tidak goyang.</li>
               <li>
-                Membagi uang sepanjang jeda pemasukan yang benar-benar kamu alami,
-                bukan sepanjang angka tebakan.
+                Membagi uang sepanjang jarak uang masuk yang benar-benar kamu alami, bukan
+                sepanjang angka tebakan.
               </li>
-              <li>Memberi tahu kalau lajumu terlalu cepat, sebelum uangnya habis.</li>
-              <li>Menahan keinginan sebentar supaya dorongan sesaat punya waktu reda.</li>
+              <li>Memberi tahu kalau belanjamu terlalu cepat, sebelum uangnya habis.</li>
+              <li>Menahan keinginan sebentar supaya kepingin sesaat punya waktu reda.</li>
               <li>Tidak pernah menghakimi, dan selalu memberi satu langkah berikutnya.</li>
             </ul>
           </article>
@@ -415,9 +411,9 @@ export default async function GuidePage() {
             <ul>
               <li>Catat uang yang keluar. Ini satu-satunya hal yang wajib.</li>
               <li>Catat uang yang masuk di hari yang sama.</li>
-              <li>Tandai tagihan lunas di halaman Biaya Tetap, bukan di Beranda.</li>
+              <li>Tandai sudah dibayar di halaman Tagihan Rutin, bukan di Beranda.</li>
               <li>Lihat batas harian sebelum belanja, bukan sesudah.</li>
-              <li>Masukkan keinginan ke daftar tunggu, bukan langsung ke keranjang.</li>
+              <li>Masukkan keinginan ke daftar tunggu dulu, jangan langsung ke keranjang.</li>
               <li>
                 Jujur pada angkanya. Catatan yang dipercantik hanya menipu dirimu
                 sendiri.
@@ -430,9 +426,9 @@ export default async function GuidePage() {
           <h3>Kalau melewati batas</h3>
           <p>
             Tidak ada hukuman, dan tidak perlu merasa gagal. Kelebihan hari ini memotong
-            jatah besok, tapi paling banyak setengahnya — supaya satu hari yang buruk
-            tidak berubah jadi minggu yang buruk. Begitu juga sebaliknya: hemat hari ini
-            menambah jatah besok. Lanjutkan saja mencatat.
+            jatah besok, tapi paling banyak setengahnya — supaya satu hari yang kebablasan
+            tidak jadi satu minggu yang kebablasan. Begitu juga sebaliknya: hemat hari ini
+            menambah jatah besok. Terus saja mencatat.
           </p>
         </div>
       </section>
@@ -443,69 +439,69 @@ export default async function GuidePage() {
           <dt>Jatah harian terasa terlalu kecil</dt>
           <dd>
             Biasanya karena dana cadangan masih diisi. Selama belum penuh, sebagian
-            uangmu memang ditahan. Kalau terlalu ketat, turunkan{' '}
-            <strong>Porsi pengisian penyangga</strong> di{' '}
-            <Link href="/rules">Aturan</Link> — misalnya dari 55% ke 35%. Kamu akan lebih
-            longgar sehari-hari, tapi lebih lama sampai aman.
+            uangmu memang ditahan. Kalau terasa terlalu ketat, turunkan{' '}
+            <strong>berapa persen tiap uang masuk untuk dana cadangan</strong> di{' '}
+            <Link href="/rules">Aturan</Link> — misalnya dari 55% ke 35%. Sehari-hari jadi
+            lebih longgar, tapi lebih lama sampai aman.
           </dd>
 
           <dt>Jatah harian terasa terlalu besar</dt>
           <dd>
             Turunkan <strong>Jatah maksimum</strong> di Aturan. Itu batas atas yang
-            menahan lonjakan setelah pemasukan besar.
+            menahan jatah melonjak setelah dapat uang besar.
           </dd>
 
-          <dt>Runway terlihat mustahil panjang atau pendek</dt>
+          <dt>&ldquo;Uangnya cukup untuk&rdquo; terlihat kepanjangan atau kependekan</dt>
           <dd>
-            Periksa biaya hidup harian. Angka itu yang membagi, jadi salah sedikit di
-            sana akan terasa besar di sini.
+            Periksa biaya hidup harian. Angka itu yang jadi pembaginya, jadi salah sedikit
+            di sana akan terasa besar di sini.
           </dd>
 
           <dt>Saldo tidak cocok dengan rekening asli</dt>
           <dd>
-            Aplikasi hanya tahu apa yang kamu catat. Kalau ada pemasukan atau pengeluaran
-            yang terlewat, catat susulan dengan tanggal yang benar.
+            Aplikasi cuma tahu apa yang kamu catat. Kalau ada uang masuk atau keluar yang
+            terlewat, catat susulan dengan tanggal yang benar.
           </dd>
 
-          <dt>Ringkasan menyarankan mengubah target hari penyangga</dt>
+          <dt>Ringkasan menyarankan mengubah target dana cadangan</dt>
           <dd>
-            Ikuti saja. Saran itu datang dari jeda pemasukan yang benar-benar pernah kamu
-            alami, sedangkan angka bawaan hanya tebakan.
+            Ikuti saja. Saran itu datang dari jarak uang masuk yang benar-benar pernah kamu
+            alami, sedangkan angka bawaannya cuma tebakan.
           </dd>
         </dl>
       </section>
 
       <section id="istilah" className="guide-section">
-        <h2>9. Istilah</h2>
+        <h2>9. Arti kata-kata di sini</h2>
         <dl className="guide-glossary">
           <dt>Jatah harian</dt>
-          <dd>Batas belanja hari ini. Dikunci per minggu supaya tidak bergoyang.</dd>
+          <dd>Batas belanja hari ini. Dikunci per minggu supaya angkanya tidak goyang.</dd>
 
-          <dt>Dana penyangga</dt>
+          <dt>Dana cadangan</dt>
           <dd>
-            Tabungan darurat di dalam aplikasi. Bukan rekening terpisah — hanya bagian
-            saldomu yang sengaja tidak boleh disentuh.
+            Tabungan darurat di dalam aplikasi. Bukan rekening terpisah — cuma bagian
+            uangmu yang sengaja tidak boleh disentuh.
           </dd>
 
-          <dt>Kewajiban terjadwal</dt>
-          <dd>Tagihan yang belum dibayar tapi sudah pasti akan dibayar.</dd>
+          <dt>Tagihan rutin</dt>
+          <dd>
+            Pengeluaran yang datang lagi setiap hari, minggu, bulan, atau tahun:
+            kontrakan, listrik, langganan, cicilan.
+          </dd>
 
           <dt>Uang tersedia</dt>
-          <dd>Saldo dikurangi tagihan yang belum dibayar.</dd>
+          <dd>Uang yang ada sekarang dikurangi tagihan yang belum dibayar.</dd>
 
           <dt>Boleh dibelanjakan</dt>
           <dd>
-            Bagian uang tersedia yang bukan dana penyangga. Inilah yang dibagi jadi jatah
+            Bagian uang tersedia yang bukan dana cadangan. Ini yang dibagi jadi jatah
             harian.
           </dd>
-
-          <dt>Horizon</dt>
-          <dd>Rentang hari yang dipakai untuk membagi uang jadi jatah harian.</dd>
         </dl>
 
         <p className="guide-note">
-          Masih ada yang membingungkan? Angka-angka detailnya selalu bisa dilihat di{' '}
-          <Link href="/summary">Ringkasan</Link>, lengkap dengan penjelasan dari mana
+          Masih ada yang bikin bingung? Angka detailnya selalu bisa dilihat di{' '}
+          <Link href="/summary">Ringkasan</Link>, lengkap dengan keterangan dari mana
           asalnya.
         </p>
       </section>

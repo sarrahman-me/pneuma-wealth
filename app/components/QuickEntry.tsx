@@ -41,14 +41,14 @@ export default function QuickEntry({
           className={kind === 'OUT' ? 'pill pill-out' : 'pill pill-muted'}
           onClick={() => setKind('OUT')}
         >
-          Pengeluaran
+          Uang keluar
         </button>
         <button
           type="button"
           className={kind === 'IN' ? 'pill pill-in' : 'pill pill-muted'}
           onClick={() => setKind('IN')}
         >
-          Pemasukan
+          Uang masuk
         </button>
       </div>
 
@@ -95,7 +95,7 @@ export default function QuickEntry({
 
           <label>
             Keterangan
-            <input name="description" placeholder="Opsional" />
+            <input name="description" placeholder="Boleh dikosongkan" />
           </label>
         </div>
 

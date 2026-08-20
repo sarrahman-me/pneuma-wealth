@@ -1,18 +1,18 @@
 /**
- * Halaman pengganti saat perangkat sedang luring.
+ * Halaman pengganti saat perangkat sedang tanpa internet.
  *
  * Sengaja tidak menyentuh database maupun sesi: halaman ini disimpan di cache
  * service worker, jadi isinya harus sama untuk siapa pun yang membukanya.
  */
-export const metadata = { title: 'Sedang luring — PNEUMA' }
+export const metadata = { title: 'Tidak ada internet — PNEUMA' }
 
 export default function OfflinePage() {
   return (
     <main>
-      <h1>Sedang luring</h1>
+      <h1>Tidak ada internet</h1>
       <section>
         <p>
-          PNEUMA butuh koneksi untuk menampilkan angka hari ini, karena jatah harian
+          PNEUMA butuh internet untuk menampilkan angka hari ini, karena jatah harian
           dihitung ulang setiap kali dibuka — bukan diambil dari salinan lama yang bisa
           keliru.
         </p>

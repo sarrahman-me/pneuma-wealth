@@ -26,17 +26,21 @@ export default function SettingsForm({
       <section className="rules-hero">
         <h2>Rasa aman</h2>
         <p className="helper-text">
-          Dipakai untuk menghitung dana penyangga dan runway. Bukan jatah belanja.
+          Dipakai untuk menghitung dana cadangan dan berapa lama uangmu bertahan. Bukan
+          jatah belanja.
         </p>
         <div className="form-grid">
           <label>
             Biaya hidup harian
             <MoneyInput name="daily_living_cost" defaultValue={settings.dailyLivingCost} required />
-            <span className="helper-text">Perkiraan kasar biaya bertahan hidup per hari.</span>
+            <span className="helper-text">
+              Kira-kira berapa yang kamu butuhkan sehari untuk hidup: makan, transport,
+              hal yang tidak bisa dilewati.
+            </span>
           </label>
 
           <label>
-            Target hari penyangga
+            Dana cadangan untuk berapa hari
             <input
               name="buffer_days"
               inputMode="numeric"
@@ -44,15 +48,15 @@ export default function SettingsForm({
               required
             />
             <span className="helper-text">
-              Berapa hari hidup yang ingin dijamin.
+              Berapa hari kamu ingin tetap bisa hidup walau tidak ada uang masuk.
               {suggestedBufferDays !== null && suggestedBufferDays !== settings.bufferDays
-                ? ` Riwayat pemasukanmu menyarankan ${suggestedBufferDays} hari.`
+                ? ` Dari riwayatmu, ${suggestedBufferDays} hari terlihat lebih pas.`
                 : ''}
             </span>
           </label>
 
           <label>
-            Porsi pengisian penyangga (%)
+            Berapa persen tiap uang masuk untuk dana cadangan
             <input
               name="buffer_fill_percent"
               inputMode="numeric"
@@ -63,14 +67,14 @@ export default function SettingsForm({
               required
             />
             <span className="helper-text">
-              Selama penyangga belum penuh, sekian persen uangmu mengisi penyangga dan
-              sisanya tetap jadi jatah harian. Makin tinggi, makin cepat aman tapi makin
-              ketat sehari-hari.
+              Selama dana cadangan belum penuh, sekian persen uang masuk dipakai untuk
+              mengisinya dan sisanya tetap jadi jatah harian. Makin besar, makin cepat aman
+              tapi makin ketat sehari-hari.
             </span>
           </label>
 
           <label>
-            Horizon kewajiban (hari)
+            Tagihan berapa hari ke depan yang disisihkan
             <input
               name="obligation_horizon_days"
               inputMode="numeric"
@@ -78,7 +82,8 @@ export default function SettingsForm({
               required
             />
             <span className="helper-text">
-              Tagihan yang jatuh tempo dalam rentang ini disisihkan lebih dulu.
+              Tagihan yang jatuh tempo dalam sekian hari ke depan uangnya dipisahkan lebih
+              dulu.
             </span>
           </label>
         </div>
@@ -87,11 +92,11 @@ export default function SettingsForm({
       <section className="rules-hero">
         <h2>Jatah belanja</h2>
         <p className="helper-text">
-          Batas ini hanya membentuk angka harian; tidak memengaruhi penyangga.
+          Angka-angka ini hanya membentuk jatah harian; dana cadangan tidak ikut terpengaruh.
         </p>
         <div className="form-grid">
           <label>
-            Horizon jatah (hari)
+            Uang dibagi untuk berapa hari
             <input
               name="allowance_horizon_days"
               inputMode="numeric"
@@ -99,9 +104,9 @@ export default function SettingsForm({
               required
             />
             <span className="helper-text">
-              Dana fleksibel dibagi sepanjang rentang ini. Kalau jeda pemasukanmu ternyata
-              lebih panjang, aplikasi memakai jeda itu — angka ini jadi batas bawahnya, tidak
-              pernah dipersempit.
+              Uang yang boleh dibelanjakan dibagi untuk sekian hari ke depan. Kalau jarak
+              uang masukmu ternyata lebih panjang, aplikasi ikut jarak itu — angka ini jadi
+              batas paling pendek, tidak pernah dipercepat.
             </span>
           </label>
 
@@ -109,15 +114,17 @@ export default function SettingsForm({
             Jatah minimum
             <MoneyInput name="allowance_min" defaultValue={settings.allowanceMin} required />
             <span className="helper-text">
-              Jatah tidak turun di bawah angka ini — kecuali uangmu memang tidak sanggup
-              menopangnya sepanjang horizon.
+              Jatah tidak akan turun di bawah angka ini — kecuali uangmu memang tidak cukup
+              untuk menutup semua harinya.
             </span>
           </label>
 
           <label>
             Jatah maksimum
             <MoneyInput name="allowance_max" defaultValue={settings.allowanceMax} required />
-            <span className="helper-text">Menahan lonjakan setelah pemasukan besar.</span>
+            <span className="helper-text">
+              Menahan jatah melonjak setelah dapat uang besar.
+            </span>
           </label>
 
           <label>
