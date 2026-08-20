@@ -1190,3 +1190,342 @@ button.secondary {
     width: 100%;
   }
 }
+
+/* Panduan
+ *
+ * Halaman ini dibaca panjang, bukan dipindai seperti halaman angka. Barisnya
+ * dipendekkan dan ukuran hurufnya dinaikkan supaya nyaman dibaca sampai habis,
+ * termasuk oleh orang yang belum pernah memakai aplikasi keuangan.
+ */
+.guide {
+  max-width: 760px;
+}
+
+.guide-lead {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.guide-section {
+  scroll-margin-top: 80px;
+}
+
+.guide-section h2 {
+  font-size: 25px;
+  margin: 0 0 14px;
+}
+
+.guide-section h3 {
+  font-size: 17px;
+  margin: 0 0 6px;
+}
+
+.guide-section p,
+.guide-section li,
+.guide-section dd {
+  font-size: 16px;
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+.guide-note {
+  font-size: 15px;
+  color: var(--text-faint);
+}
+
+/* Daftar isi */
+.guide-toc {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 18px;
+}
+
+.guide-toc-title {
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+}
+
+.guide-toc ol {
+  margin: 0;
+  padding-left: 20px;
+  columns: 2;
+  column-gap: 28px;
+}
+
+.guide-toc li {
+  margin-bottom: 6px;
+  break-inside: avoid;
+}
+
+.guide-toc a {
+  color: var(--text-muted);
+}
+
+.guide-toc a:hover {
+  color: var(--text);
+}
+
+/* Langkah bernomor */
+.guide-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+}
+
+.guide-steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 46px;
+  margin-bottom: 22px;
+}
+
+.guide-steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guide-steps > li:last-child {
+  margin-bottom: 0;
+}
+
+.guide-steps p:last-child {
+  margin-bottom: 0;
+}
+
+/* Rutinitas dan pembagian tugas */
+.guide-routine {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.guide-routine article {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+}
+
+.guide-routine p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.guide-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.guide-split article {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+}
+
+.guide-split article:first-child {
+  border-left: 4px solid var(--chart-buffer);
+}
+
+.guide-split article:last-child {
+  border-left: 4px solid var(--chart-obligation);
+}
+
+.guide-split ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.guide-split li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.guide-split li:last-child {
+  margin-bottom: 0;
+}
+
+/* Kotak penekanan */
+.guide-callout {
+  background: var(--info-bg);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+
+.guide-callout h3 {
+  margin-top: 0;
+  /* Judul kotak harus jelas terpisah dari pertanyaan pertama di bawahnya,
+     karena keduanya sama-sama tebal. */
+  margin-bottom: 14px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.guide-callout > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Tanya jawab dan istilah */
+.guide-qa dt,
+.guide-glossary dt {
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+.guide-qa dt:first-child,
+.guide-glossary dt:first-child {
+  margin-top: 0;
+}
+
+.guide-qa dd,
+.guide-glossary dd {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+}
+
+.guide-glossary,
+.guide-qa {
+  margin: 0;
+}
+
+/* Daftar periksa */
+.checklist {
+  margin-top: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  background: var(--bg-raised);
+}
+
+.checklist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.checklist-head h3 {
+  margin: 0;
+}
+
+.checklist-count {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.checklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.check-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.check-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-strong);
+  color: var(--text-faint);
+}
+
+.check-done .check-mark {
+  background: var(--calm);
+  border-color: var(--calm);
+  color: #ffffff;
+}
+
+.check-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.check-note {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text-faint);
+}
+
+.check-action {
+  white-space: nowrap;
+  font-size: 14px;
+  padding: 8px 14px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .guide-toc ol {
+    columns: 1;
+  }
+
+  .check-row {
+    grid-template-columns: 24px 1fr;
+  }
+
+  .check-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

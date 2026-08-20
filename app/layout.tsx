@@ -19,6 +19,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => (
           <Link href="/fixed-costs">Biaya Tetap</Link>
           <Link href="/summary">Ringkasan</Link>
           <Link href="/rules">Aturan</Link>
+          <Link href="/panduan">Panduan</Link>
           {isAuthConfigured() ? (
             <span style={{ marginLeft: 'auto', display: 'flex' }}>
               <UserButton />

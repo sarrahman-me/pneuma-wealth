@@ -77,6 +77,14 @@ Nadanya sengaja tenang. Peringatan yang menghakimi setelah uang habis hanya
 menghasilkan rasa bersalah, dan rasa bersalah membuat orang berhenti membuka
 aplikasinya.
 
+## Panduan di dalam aplikasi
+
+Halaman `/panduan` berisi cara pakai lengkap untuk pembaca non-teknis: persiapan
+awal, rutinitas harian, apa yang dilakukan saat uang masuk, cara membaca tiap
+angka dan grafik, serta pembagian tugas antara pengguna dan aplikasi. Daftar
+periksa persiapannya membaca keadaan akun yang sedang dibuka, jadi pembaca tidak
+perlu menebak sudah sampai mana.
+
 ## Arsitektur
 
 ```
