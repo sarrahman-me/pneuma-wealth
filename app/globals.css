@@ -1153,6 +1153,52 @@ a.btn.btn-quiet:hover {
   color: var(--text-faint);
 }
 
+/* Akibat pembelian: satu kalimat penilaian, satu baris angkanya. Warnanya
+   memakai skala yang sama dengan kartu lain — tenang, waspada, mendesak. */
+.wish-impact {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 8px 8px 0;
+  background: var(--bg-sunken);
+}
+
+.wish-impact-aman {
+  border-left-color: var(--calm);
+  background: var(--calm-bg);
+}
+
+/* Baris yang sudah siap sudah berlatar tenang; catatan di dalamnya perlu
+   permukaan lain supaya tidak lebur jadi satu bidang hijau. */
+.wish-ready .wish-impact-aman {
+  background: var(--bg-raised);
+}
+
+.wish-impact-ketat {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.wish-impact-belum {
+  border-left-color: var(--alert);
+  background: var(--alert-bg);
+}
+
+.wish-impact-verdict {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wish-impact-detail {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .wish-amount {
   font-weight: 600;
   font-variant-numeric: tabular-nums;

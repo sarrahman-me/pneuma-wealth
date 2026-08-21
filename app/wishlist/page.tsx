@@ -4,9 +4,10 @@ import WishList from './WishList'
 import { getDb } from '@/lib/db'
 import { wishItems } from '@/lib/db/schema'
 import { formatRupiah } from '@/lib/core/format'
-import { viewWish, type WishItem, type WishView } from '@/lib/core/wish'
+import { computeBaseAllowance } from '@/lib/core/allowance'
+import { planWishPurchase, viewWish, type WishItem, type WishView } from '@/lib/core/wish'
 import { getCurrentUser } from '@/lib/server/user'
-import { getDailyState } from '@/lib/server/state'
+import { getDailyState, toSettings } from '@/lib/server/state'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,16 +51,28 @@ export default async function WishlistPage() {
       .limit(20),
   ])
 
-  const toView = (row: typeof wishItems.$inferSelect): WishView =>
+  // Horizon yang benar-benar dipakai hari ini, supaya jatah harian yang
+  // diramalkan di sini sebanding dengan yang tampil di Beranda.
+  const planning = { ...toSettings(user.settings), allowanceHorizonDays: state.horizon.days }
+
+  const toView = (
+    row: typeof wishItems.$inferSelect,
+    withImpact: boolean,
+  ): WishView =>
     viewWish(
       toItem(row),
       state.today,
       user.settings.dailyLivingCost,
       state.allowance.allowed,
+      withImpact
+        ? planWishPurchase(row.amount, state.funds, planning, computeBaseAllowance)
+        : null,
     )
 
-  const waiting = waitingRows.map(toView)
-  const decided = decidedRows.map(toView)
+  // Akibat hanya dihitung untuk yang masih ditunggu — keputusan yang sudah
+  // lewat tidak perlu diramalkan lagi.
+  const waiting = waitingRows.map((row) => toView(row, true))
+  const decided = decidedRows.map((row) => toView(row, false))
 
   const released = decided.filter((wish) => wish.status === 'released')
   const releasedTotal = released.reduce((sum, wish) => sum + wish.amount, 0)
@@ -69,8 +82,9 @@ export default async function WishlistPage() {
     <main>
       <h1>Keinginan</h1>
       <p>
-        Cuma di halaman ini aplikasi ikut campur sebelum uang keluar. Sisanya hanya
-        mencatat yang sudah terjadi.
+        Cuma di halaman ini aplikasi ikut campur sebelum uang keluar. Masa tunggu
+        memastikan keinginannya bertahan; hitungan di tiap barisnya memperlihatkan
+        harganya bagi hari-harimu setelah dibeli.
       </p>
 
       <section className="wish-summary">

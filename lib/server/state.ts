@@ -86,7 +86,7 @@ export type DailyState = {
   incomePlan: IncomePlan | null
 }
 
-const toSettings = (row: CurrentUser['settings']): Settings => ({
+export const toSettings = (row: CurrentUser['settings']): Settings => ({
   dailyLivingCost: row.dailyLivingCost,
   bufferDays: row.bufferDays,
   bufferFillPercent: row.bufferFillPercent,

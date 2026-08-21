@@ -5,7 +5,58 @@ import { addWish, buyWish, deleteWish, releaseWish, updateWish } from '@/app/act
 import MoneyInput from '@/app/components/MoneyInput'
 import type { ActionResult } from '@/app/actions/transactions'
 import { formatMultiplier, formatRupiah, formatShortDate } from '@/lib/core/format'
-import type { WishView } from '@/lib/core/wish'
+import type { WishImpact, WishView } from '@/lib/core/wish'
+
+/**
+ * Akibat pembelian, dalam kalimat.
+ *
+ * Nadanya sengaja tidak melarang: uangnya tetap milik pengguna dan tombol
+ * belinya tidak pernah dikunci. Yang ditambahkan cuma satu hal yang selama ini
+ * hilang — melihat harganya dalam jatah harian dan dana cadangan sebelum
+ * memutuskan, bukan setelah uangnya keluar.
+ */
+const impactCopy = (impact: WishImpact): { verdict: string; detail: string } => {
+  const parts = [
+    impact.dailyBefore === impact.dailyAfter
+      ? `jatah harian tetap ${formatRupiah(impact.dailyAfter)}`
+      : `jatah harian ${formatRupiah(impact.dailyBefore)} → ${formatRupiah(impact.dailyAfter)}`,
+    impact.bufferBefore > 0 || impact.bufferAfter > 0
+      ? `dana cadangan ${formatRupiah(impact.bufferBefore)} → ${formatRupiah(impact.bufferAfter)}`
+      : null,
+  ].filter(Boolean)
+
+  const detail = `Kalau dibeli hari ini: ${parts.join(', ')}.`
+
+  if (impact.verdict === 'belum') {
+    return {
+      verdict: `Uangmu belum sampai ke sana — kurang ${formatRupiah(impact.shortfall)}, dan ${formatRupiah(impact.fromObligations)} di antaranya uang yang sudah jadi milik tagihan.`,
+      detail,
+    }
+  }
+
+  if (impact.verdict === 'ketat') {
+    return {
+      verdict: `Muat, tapi ${formatRupiah(impact.fromBuffer)} diambil dari dana cadangan.`,
+      detail,
+    }
+  }
+
+  return {
+    verdict: 'Muat di uang yang memang boleh dibelanjakan.',
+    detail,
+  }
+}
+
+function ImpactNote({ impact }: { impact: WishImpact }) {
+  const copy = impactCopy(impact)
+
+  return (
+    <div className={`wish-impact wish-impact-${impact.verdict}`}>
+      <p className="wish-impact-verdict">{copy.verdict}</p>
+      <p className="wish-impact-detail">{copy.detail}</p>
+    </div>
+  )
+}
 
 const useAction = (action: (formData: FormData) => Promise<ActionResult>) =>
   useActionState(
@@ -133,6 +184,10 @@ function WaitingRow({ wish }: { wish: WishView }) {
           </form>
         </div>
       )}
+
+      {/* Ditaruh sebagai anak langsung baris supaya melebar penuh di bawah
+          harga dan tombol — kalimatnya perlu ruang, bukan kolom sempit. */}
+      {wish.impact ? <ImpactNote impact={wish.impact} /> : null}
     </li>
   )
 }

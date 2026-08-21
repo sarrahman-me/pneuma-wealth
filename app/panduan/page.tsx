@@ -291,6 +291,17 @@ export default async function GuidePage() {
             </p>
           </li>
           <li>
+            <h3>Lihat harganya bagi hari-harimu</h3>
+            <p>
+              Di bawah tiap keinginan ada satu baris yang menghitung akibatnya kalau
+              dibeli hari ini: jatah harianmu jadi berapa, dan dana cadanganmu tinggal
+              berapa. Baris itu juga menyebut kalau sebagian harganya terpaksa diambil
+              dari dana cadangan, atau bahkan dari uang yang sudah jadi milik tagihan.
+              Angkanya cuma memberi tahu — tombol belinya tidak pernah dikunci, karena
+              itu tetap uangmu.
+            </p>
+          </li>
+          <li>
             <h3>Putuskan</h3>
             <p>
               Setelah waktunya habis, muncul dua tombol:{' '}
