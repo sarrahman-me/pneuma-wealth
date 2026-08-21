@@ -21,6 +21,7 @@ export type FixedCostView = {
   recurrence: 'daily' | 'weekly' | 'monthly' | 'yearly'
   dueDay: number
   dueMonth: number
+  /** Negatif berarti jatuh temponya sudah lewat dan belum ditandai lunas. */
   daysToDue: number
   /** Berapa kali biaya ini masih akan jatuh tempo dalam horizon kewajiban. */
   unpaidAhead: number
@@ -144,11 +145,15 @@ function Row({ cost }: { cost: FixedCostView }) {
     if (editState?.ok) setEditing(false)
   }, [editState])
 
+  const overdue = !cost.paid && cost.daysToDue < 0
+
   const dueLabel = cost.paid
     ? 'Yang terdekat sudah dibayar'
-    : cost.daysToDue === 0
-      ? 'Jatuh tempo hari ini'
-      : `Jatuh tempo ${cost.daysToDue} hari lagi`
+    : overdue
+      ? `Telat ${Math.abs(cost.daysToDue)} hari`
+      : cost.daysToDue === 0
+        ? 'Jatuh tempo hari ini'
+        : `Jatuh tempo ${cost.daysToDue} hari lagi`
 
   // Untuk siklus pendek, sekali jatuh tempo bukan gambaran utuh: yang benar-
   // benar disisihkan adalah seluruh kejadian dalam horizon.
@@ -216,10 +221,10 @@ function Row({ cost }: { cost: FixedCostView }) {
   }
 
   return (
-    <li className="fixed-row">
+    <li className={overdue ? 'fixed-row fixed-row-overdue' : 'fixed-row'}>
       <div className="tx-main">
         <p className="tx-title">{cost.name}</p>
-        <p className="tx-meta">
+        <p className={overdue ? 'tx-meta tx-meta-overdue' : 'tx-meta'}>
           {cost.scheduleLabel} · {dueLabel}
           {aheadLabel}
         </p>

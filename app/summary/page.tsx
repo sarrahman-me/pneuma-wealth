@@ -48,9 +48,13 @@ export default async function SummaryPage() {
           <p className="metric-value">− {formatRupiah(funds.scheduledObligations)}</p>
           <p className="metric-desc">
             {obligations.unpaidCount} tagihan belum lunas
-            {obligations.daysToNextDue !== null
-              ? `, terdekat ${obligations.daysToNextDue} hari lagi`
-              : ''}
+            {obligations.daysToNextDue === null
+              ? ''
+              : obligations.daysToNextDue < 0
+                ? `, yang terlama sudah telat ${Math.abs(obligations.daysToNextDue)} hari`
+                : obligations.daysToNextDue === 0
+                  ? ', ada yang jatuh tempo hari ini'
+                  : `, terdekat ${obligations.daysToNextDue} hari lagi`}
             .
           </p>
         </article>

@@ -8,8 +8,10 @@ import {
   describeSchedule,
   nextDue,
   occurrencesWithin,
+  overdueOccurrence,
   periodKeyFor,
 } from '@/lib/core/due'
+import { daysBetween } from '@/lib/core/money'
 import { todayIn } from '@/lib/core/timezone'
 import { formatRupiah } from '@/lib/core/format'
 import { getCurrentUser } from '@/lib/server/user'
@@ -62,9 +64,22 @@ export default async function FixedCostsPage() {
 
   const view: FixedCostView[] = costs
     .map((cost) => {
-      const period = periodKeyFor(cost.recurrence, nextDue(today, cost))
-      const unpaidAhead = occurrencesWithin(today, cost, horizonDays).filter(
-        (due) => !paidKeys.has(`${cost.id}:${periodKeyFor(cost.recurrence, due)}`),
+      const isPaid = (due: string) =>
+        paidKeys.has(`${cost.id}:${periodKeyFor(cost.recurrence, due)}`)
+
+      // Tagihan tidak bisa menunggak sebelum ia dicatat.
+      const since = todayIn(user.timezone, cost.createdAt)
+      const overdue = overdueOccurrence(today, cost, since)
+      const stillOwed = overdue !== null && !isPaid(overdue)
+
+      // Tombolnya harus menunjuk kejadian tertua yang belum lunas, sama seperti
+      // yang dipakai server saat menandai bayar — kalau berbeda, tombolnya akan
+      // menyatakan satu periode sementara yang tercatat periode lain.
+      const target = stillOwed && overdue ? overdue : nextDue(today, cost)
+      const period = periodKeyFor(cost.recurrence, target)
+
+      const unpaidAhead = occurrencesWithin(today, cost, horizonDays, since).filter(
+        (due) => !isPaid(due),
       ).length
 
       return {
@@ -75,10 +90,12 @@ export default async function FixedCostsPage() {
         recurrence: cost.recurrence,
         dueDay: cost.dueDay,
         dueMonth: cost.dueMonth,
-        daysToDue: daysUntilDue(today, cost),
+        // Negatif berarti sudah lewat. Menampilkan jatuh tempo siklus
+        // berikutnya di sini adalah cara paling halus untuk berbohong.
+        daysToDue: stillOwed && overdue ? daysBetween(today, overdue) : daysUntilDue(today, cost),
         unpaidAhead,
         period,
-        paid: paidKeys.has(`${cost.id}:${period}`),
+        paid: isPaid(target),
       }
     })
     .sort((a, b) => a.daysToDue - b.daysToDue)
@@ -86,6 +103,10 @@ export default async function FixedCostsPage() {
   // Siklus pendek dihitung sebanyak kejadiannya, bukan sekali — inilah nilai
   // yang benar-benar disisihkan dari uang belanja.
   const unpaidTotal = view.reduce((sum, cost) => sum + cost.amount * cost.unpaidAhead, 0)
+
+  const overdueTotal = view
+    .filter((cost) => !cost.paid && cost.daysToDue < 0)
+    .reduce((sum, cost) => sum + cost.amount, 0)
 
   return (
     <main>
@@ -98,6 +119,12 @@ export default async function FixedCostsPage() {
       <section className="fixed-summary">
         <p className="metric-title">Dipisahkan untuk {horizonDays} hari ke depan</p>
         <p className="metric-value">{formatRupiah(unpaidTotal)}</p>
+        {overdueTotal > 0 ? (
+          <p className="metric-desc">
+            Termasuk {formatRupiah(overdueTotal)} yang jatuh temponya sudah lewat dan
+            belum ditandai lunas.
+          </p>
+        ) : null}
       </section>
 
       <FixedCostList costs={view} />

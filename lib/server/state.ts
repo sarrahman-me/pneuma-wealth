@@ -48,7 +48,16 @@ export type Obligations = {
    * hingga dan tidak berarti apa-apa.
    */
   unpaidAmount: number
+  /**
+   * Hari menuju kejadian belum lunas yang terdekat. Negatif berarti sudah
+   * lewat — tunggakan tidak dibulatkan jadi nol supaya tidak terbaca seperti
+   * "jatuh tempo hari ini".
+   */
   daysToNextDue: number | null
+  /** Berapa tagihan yang punya tunggakan, yaitu kejadian lewat yang belum dibayar. */
+  overdueCount: number
+  /** Nilai seluruh tunggakan itu. Sudah termasuk di dalam `unpaidAmount`. */
+  overdueAmount: number
 }
 
 /** Satu hari di grafik ritme: yang dipakai versus yang dijatah. */
@@ -117,6 +126,7 @@ const fetchObligations = async (
   userId: string,
   today: string,
   horizonDays: number,
+  timezone: string,
 ): Promise<Obligations> => {
   const db = getDb()
   const active = await db
@@ -125,7 +135,14 @@ const fetchObligations = async (
     .where(and(eq(fixedCosts.userId, userId), eq(fixedCosts.isActive, true)))
 
   if (active.length === 0) {
-    return { scheduled: 0, unpaidCount: 0, unpaidAmount: 0, daysToNextDue: null }
+    return {
+      scheduled: 0,
+      unpaidCount: 0,
+      unpaidAmount: 0,
+      daysToNextDue: null,
+      overdueCount: 0,
+      overdueAmount: 0,
+    }
   }
 
   const payments = await db
@@ -148,29 +165,41 @@ const fetchObligations = async (
   let unpaidCount = 0
   let unpaidAmount = 0
   let daysToNextDue: number | null = null
+  let overdueCount = 0
+  let overdueAmount = 0
 
   // Siklus pendek jatuh tempo berkali-kali dalam satu horizon. Menyisihkan
   // hanya kejadian terdekat akan membuat jatah harian tampak lebih longgar
   // daripada uang yang sebenarnya sudah punya nama.
   for (const cost of active) {
     let hasUnpaid = false
+    let hasOverdue = false
 
-    for (const due of occurrencesWithin(today, cost, horizonDays)) {
+    // Tagihan tidak bisa menunggak sebelum ia dicatat: yang dipakai sebagai
+    // batas adalah tanggal pembuatannya menurut zona waktu pengguna.
+    const since = todayIn(timezone, cost.createdAt)
+
+    for (const due of occurrencesWithin(today, cost, horizonDays, since)) {
       if (paidKeys.has(`${cost.id}:${periodKeyFor(cost.recurrence, due)}`)) continue
 
       const days = daysBetween(today, due)
       hasUnpaid = true
       unpaidAmount += cost.amount
       scheduled += cost.amount
+      if (days < 0) {
+        hasOverdue = true
+        overdueAmount += cost.amount
+      }
       if (daysToNextDue === null || days < daysToNextDue) {
         daysToNextDue = days
       }
     }
 
     if (hasUnpaid) unpaidCount += 1
+    if (hasOverdue) overdueCount += 1
   }
 
-  return { scheduled, unpaidCount, unpaidAmount, daysToNextDue }
+  return { scheduled, unpaidCount, unpaidAmount, daysToNextDue, overdueCount, overdueAmount }
 }
 
 /**
@@ -249,6 +278,8 @@ const fetchStats = async (
     unpaidFixedCostCount: obligations.unpaidCount,
     unpaidFixedCostAmount: obligations.unpaidAmount,
     daysToNextDue: obligations.daysToNextDue,
+    overdueFixedCostCount: obligations.overdueCount,
+    overdueFixedCostAmount: obligations.overdueAmount,
     wishReadyCount: wish.readyCount,
     wishWaitingCount: wish.waitingCount,
     wishWaitingAmount: wish.waitingAmount,
@@ -478,7 +509,7 @@ export const getDailyState = async (user: CurrentUser): Promise<DailyState> => {
 
   const [liquidBalance, obligations, wish, incomeEvents] = await Promise.all([
     fetchLiquidBalance(user.id),
-    fetchObligations(user.id, today, config.obligationHorizonDays),
+    fetchObligations(user.id, today, config.obligationHorizonDays, user.timezone),
     fetchWishSummary(user.id, today),
     fetchIncomeEvents(user.id, today),
   ])

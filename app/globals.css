@@ -1268,6 +1268,20 @@ a.btn.btn-quiet:hover {
   color: var(--text-faint);
 }
 
+/* Tagihan yang jatuh temponya sudah lewat.
+   Ditandai dengan garis di tepi, bukan latar penuh: yang perlu terjadi adalah
+   mata langsung menemukannya di dalam daftar, bukan merasa ditegur. */
+.fixed-row-overdue {
+  border-left: 3px solid var(--alert);
+  padding-left: 12px;
+  margin-left: -15px;
+}
+
+.tx-meta-overdue {
+  color: var(--alert);
+  font-weight: 600;
+}
+
 .tx-amount {
   font-weight: 600;
   font-variant-numeric: tabular-nums;

@@ -20,8 +20,14 @@ export type InsightStats = {
   incomeToday: number
   unpaidFixedCostCount: number
   unpaidFixedCostAmount: number
-  /** Hari menuju biaya tetap terdekat yang belum dibayar. Null bila tidak ada. */
+  /**
+   * Hari menuju biaya tetap terdekat yang belum dibayar. Null bila tidak ada,
+   * negatif bila jatuh temponya sudah lewat.
+   */
   daysToNextDue: number | null
+  /** Biaya tetap yang jatuh temponya sudah lewat tapi belum ditandai lunas. */
+  overdueFixedCostCount: number
+  overdueFixedCostAmount: number
   /** Keinginan yang masa tunggunya sudah habis dan menunggu diputuskan. */
   wishReadyCount: number
   wishWaitingCount: number

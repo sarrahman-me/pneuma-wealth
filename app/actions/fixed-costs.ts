@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/lib/db'
 import { accounts, fixedCostPayments, fixedCosts, transactions } from '@/lib/db/schema'
-import { nextDue, periodKeyFor, type Recurrence } from '@/lib/core/due'
+import { nextDue, overdueOccurrence, periodKeyFor, type Recurrence } from '@/lib/core/due'
 import { todayIn } from '@/lib/core/timezone'
 import { requireCurrentUser } from '@/lib/server/user'
 import type { ActionResult } from './transactions'
@@ -152,19 +152,28 @@ export const markFixedCostPaid = async (formData: FormData): Promise<ActionResul
     const db = getDb()
 
     const today = todayIn(user.timezone)
-    const period = periodKeyFor(cost.recurrence, nextDue(today, cost))
 
-    const [existing] = await db
+    // Yang dibayar orang ketika ia menekan tombol ini adalah kejadian tertua
+    // yang masih tertunggak, bukan yang berikutnya. Memakai `nextDue` begitu
+    // saja membuat tagihan bulan ini tercatat sebagai lunasnya bulan depan:
+    // bulan ini hilang selamanya, dan bulan depan disembunyikan padahal belum
+    // dibayar. Satu penekanan tombol, dua bulan rusak.
+    const overdue = overdueOccurrence(today, cost, todayIn(user.timezone, cost.createdAt))
+
+    const periods = await db
       .select()
       .from(fixedCostPayments)
-      .where(
-        and(
-          eq(fixedCostPayments.fixedCostId, cost.id),
-          eq(fixedCostPayments.period, period),
-        ),
-      )
-      .limit(1)
-    if (existing?.transactionId) {
+      .where(eq(fixedCostPayments.fixedCostId, cost.id))
+
+    const isPaid = (due: string) => {
+      const key = periodKeyFor(cost.recurrence, due)
+      return periods.some((row) => row.period === key && row.transactionId !== null)
+    }
+
+    const target = overdue && !isPaid(overdue) ? overdue : nextDue(today, cost)
+    const period = periodKeyFor(cost.recurrence, target)
+
+    if (isPaid(target)) {
       return { ok: true }
     }
 

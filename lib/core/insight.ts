@@ -194,6 +194,23 @@ const RULES: Rule[] = [
     }),
   },
   {
+    id: 'fixed_cost_overdue',
+    when: ({ stats }) => stats.overdueFixedCostCount > 0,
+    build: ({ stats, funds }) => ({
+      statusTitle:
+        stats.overdueFixedCostCount === 1
+          ? 'Ada tagihan rutin yang jatuh temponya sudah lewat.'
+          : `Ada ${stats.overdueFixedCostCount} tagihan rutin yang jatuh temponya sudah lewat.`,
+      bullets: [
+        `Total yang tertunggak ${formatRupiah(stats.overdueFixedCostAmount)}.`,
+        'Uangnya tetap dipisahkan dari uang belanja selama belum ditandai lunas.',
+      ],
+      nextStep: 'Kalau sudah terbayar, tandai lunas supaya angkanya kembali jujur.',
+      tone: funds.available < stats.overdueFixedCostAmount ? 'alert' : 'calm',
+      keyNumbers: [stats.overdueFixedCostCount, stats.overdueFixedCostAmount],
+    }),
+  },
+  {
     id: 'wish_ready',
     when: ({ stats }) => stats.wishReadyCount > 0,
     build: ({ stats }) => ({
@@ -212,6 +229,7 @@ const RULES: Rule[] = [
     when: ({ stats }) =>
       stats.unpaidFixedCostCount > 0 &&
       stats.daysToNextDue !== null &&
+      stats.daysToNextDue >= 0 &&
       stats.daysToNextDue <= DUE_SOON_DAYS,
     build: ({ stats, funds }) => ({
       statusTitle:

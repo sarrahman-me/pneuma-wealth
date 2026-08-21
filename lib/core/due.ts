@@ -8,6 +8,12 @@
  * jatah harian berbohong ke arah yang berlawanan.
  *
  * `dueDay` dibaca berbeda tergantung siklusnya; lihat `DueSchedule`.
+ *
+ * Satu kejadian yang sudah lewat tapi belum dibayar tidak boleh menguap. Kalau
+ * jatuh tempo selalu digeser ke siklus berikutnya, tagihan yang telat justru
+ * hilang dari uang yang disisihkan — dan jatah harian jadi tampak lebih besar
+ * tepat pada hari kamu sebenarnya berutang. Karena itu kejadian terakhir yang
+ * belum lunas ikut dihitung sebagai tunggakan; lihat `overdueOccurrence`.
  */
 
 import { addDays, daysBetween, formatLocalDate, parseLocalDate } from './money'
@@ -88,6 +94,61 @@ export const nextDue = (today: LocalDate, schedule: DueSchedule): LocalDate => {
   }
 }
 
+/** Jatuh tempo terakhir pada atau sebelum `today`, apa pun siklusnya. */
+export const lastDue = (today: LocalDate, schedule: DueSchedule): LocalDate => {
+  switch (schedule.recurrence) {
+    case 'daily':
+      return today
+
+    case 'weekly': {
+      const target = clampInt(schedule.dueDay, 1, 7)
+      return addDays(today, -((isoWeekday(today) - target + 7) % 7))
+    }
+
+    case 'yearly': {
+      const monthIndex = clampInt(schedule.dueMonth, 1, 12) - 1
+      const day = clampInt(schedule.dueDay, 1, 31)
+      const year = parseLocalDate(today).getUTCFullYear()
+
+      const thisYear = dateAt(year, monthIndex, day)
+      return daysBetween(today, thisYear) <= 0 ? thisYear : dateAt(year - 1, monthIndex, day)
+    }
+
+    default: {
+      const day = clampInt(schedule.dueDay, 1, 31)
+      const now = parseLocalDate(today)
+      const year = now.getUTCFullYear()
+      const monthIndex = now.getUTCMonth()
+
+      const thisMonth = dateAt(year, monthIndex, day)
+      return daysBetween(today, thisMonth) <= 0 ? thisMonth : dateAt(year, monthIndex - 1, day)
+    }
+  }
+}
+
+/**
+ * Kejadian yang sudah lewat dan masih menunggu dibayar, atau `null` bila tidak
+ * ada. Sengaja hanya satu — yang terakhir. Menumpuk seluruh siklus yang pernah
+ * terlewat akan mengubah pelacak keuangan jadi penagih utang, dan untuk siklus
+ * harian angkanya tidak akan pernah berhenti bertambah.
+ *
+ * `since` membatasi tunggakan pada kejadian yang benar-benar dialami: tagihan
+ * yang baru dicatat hari ini tidak boleh langsung tampak telat karena tanggal
+ * jatuh temponya kebetulan sudah lewat bulan ini.
+ */
+export const overdueOccurrence = (
+  today: LocalDate,
+  schedule: DueSchedule,
+  since?: LocalDate,
+): LocalDate | null => {
+  const previous = lastDue(today, schedule)
+
+  if (daysBetween(today, previous) >= 0) return null
+  if (since && daysBetween(since, previous) < 0) return null
+
+  return previous
+}
+
 /** Kejadian sesudah `due`, dihitung dari tanggal nominal supaya tidak terseret pembulatan bulan pendek. */
 const advance = (due: LocalDate, schedule: DueSchedule): LocalDate => {
   const at = parseLocalDate(due)
@@ -109,7 +170,8 @@ const advance = (due: LocalDate, schedule: DueSchedule): LocalDate => {
 }
 
 /**
- * Semua jatuh tempo dari hari ini sampai `horizonDays` hari ke depan.
+ * Semua jatuh tempo dari hari ini sampai `horizonDays` hari ke depan, ditambah
+ * satu tunggakan yang belum lunas bila ada.
  *
  * Siklus pendek muncul berkali-kali dalam satu horizon, dan setiap kejadian
  * adalah uang yang benar-benar akan keluar — jadi semuanya ikut disisihkan,
@@ -119,10 +181,17 @@ export const occurrencesWithin = (
   today: LocalDate,
   schedule: DueSchedule,
   horizonDays: number,
+  since?: LocalDate,
 ): LocalDate[] => {
   if (horizonDays < 0) return []
 
   const dues: LocalDate[] = []
+
+  // Tunggakan tidak punya tempat di horizon ke depan, tapi uangnya tetap harus
+  // dipisahkan — justru lebih mendesak daripada yang belum jatuh tempo.
+  const overdue = overdueOccurrence(today, schedule, since)
+  if (overdue) dues.push(overdue)
+
   let due = nextDue(today, schedule)
 
   while (daysBetween(today, due) <= horizonDays && dues.length < MAX_OCCURRENCES) {

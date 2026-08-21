@@ -27,6 +27,8 @@ const stats = (overrides: Partial<InsightStats> = {}): InsightStats => ({
   unpaidFixedCostCount: 0,
   unpaidFixedCostAmount: 0,
   daysToNextDue: null,
+  overdueFixedCostCount: 0,
+  overdueFixedCostAmount: 0,
   wishReadyCount: 0,
   wishWaitingCount: 0,
   wishWaitingAmount: 0,
@@ -130,6 +132,34 @@ describe('prioritas aturan', () => {
       }),
     })
     expect(computeInsight(input).ruleId).not.toBe('fixed_cost_due_soon')
+  })
+
+  it('tunggakan diangkat sebelum keinginan yang menunggu diputuskan', () => {
+    const input = build(10_000_000, 0, {
+      stats: stats({
+        wishReadyCount: 1,
+        wishWaitingAmount: 800_000,
+        unpaidFixedCostCount: 2,
+        unpaidFixedCostAmount: 700_000,
+        daysToNextDue: -1,
+        overdueFixedCostCount: 1,
+        overdueFixedCostAmount: 250_000,
+      }),
+    })
+    expect(computeInsight(input).ruleId).toBe('fixed_cost_overdue')
+  })
+
+  it('jatuh tempo yang sudah lewat tidak dibaca sebagai "sebentar lagi"', () => {
+    const input = build(10_000_000, 0, {
+      stats: stats({
+        unpaidFixedCostCount: 1,
+        unpaidFixedCostAmount: 250_000,
+        daysToNextDue: -3,
+        overdueFixedCostCount: 1,
+        overdueFixedCostAmount: 250_000,
+      }),
+    })
+    expect(computeInsight(input).ruleId).toBe('fixed_cost_overdue')
   })
 
   it('mendeteksi hampir menyentuh batas', () => {

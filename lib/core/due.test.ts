@@ -3,8 +3,10 @@ import {
   daysUntilDue,
   describeSchedule,
   isoWeekKey,
+
   nextDue,
   nextMonthlyDue,
+  overdueOccurrence,
   occurrencesWithin,
   periodKeyFor,
   type DueSchedule,
@@ -84,6 +86,8 @@ describe('nextDue per siklus', () => {
   })
 })
 
+// Kejadian ke depan diuji tanpa tunggakan: `since` disetel ke hari ini, seolah
+// tagihannya baru dicatat, supaya yang diperiksa murni jaraknya ke depan.
 describe('occurrencesWithin', () => {
   it('harian muncul sekali per hari termasuk hari ini', () => {
     const dues = occurrencesWithin('2026-08-20', schedule({ recurrence: 'daily' }), 6)
@@ -97,12 +101,13 @@ describe('occurrencesWithin', () => {
       '2026-08-20',
       schedule({ recurrence: 'weekly', dueDay: 1 }),
       30,
+      '2026-08-20',
     )
     expect(dues).toEqual(['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14'])
   })
 
   it('bulanan hanya sekali dalam horizon 30 hari', () => {
-    const dues = occurrencesWithin('2026-08-20', schedule({ dueDay: 25 }), 30)
+    const dues = occurrencesWithin('2026-08-20', schedule({ dueDay: 25 }), 30, '2026-08-20')
     expect(dues).toEqual(['2026-08-25'])
   })
 
@@ -118,13 +123,14 @@ describe('occurrencesWithin', () => {
       '2026-08-20',
       schedule({ recurrence: 'yearly', dueDay: 5, dueMonth: 11 }),
       30,
+      '2026-08-20',
     )
     expect(dues).toEqual([])
   })
 
   it('bulanan tidak terseret pembulatan bulan pendek', () => {
     // Setelah 28 Februari, kejadian berikutnya kembali ke tanggal 31.
-    const dues = occurrencesWithin('2026-02-01', schedule({ dueDay: 31 }), 60)
+    const dues = occurrencesWithin('2026-02-01', schedule({ dueDay: 31 }), 60, '2026-02-01')
     expect(dues).toEqual(['2026-02-28', '2026-03-31'])
   })
 
@@ -181,5 +187,67 @@ describe('zona waktu', () => {
   it('membaca jam lokal pengguna', () => {
     const instant = new Date('2026-08-20T18:30:00Z')
     expect(hourIn('Asia/Jakarta', instant)).toBe(1)
+  })
+})
+
+describe('tunggakan', () => {
+  // 20 Agustus lewat, tagihannya belum ditandai lunas: yang benar adalah telat
+  // satu hari, bukan jatuh tempo tiga puluh hari lagi.
+  it('kejadian bulan ini yang sudah lewat tetap dihitung', () => {
+    expect(overdueOccurrence('2026-08-21', schedule({ dueDay: 20 }))).toBe('2026-08-20')
+  })
+
+  it('tepat pada hari jatuh tempo belum menunggak', () => {
+    expect(overdueOccurrence('2026-08-20', schedule({ dueDay: 20 }))).toBeNull()
+  })
+
+  it('sebelum jatuh tempo memakai siklus sebelumnya', () => {
+    expect(overdueOccurrence('2026-08-05', schedule({ dueDay: 20 }))).toBe('2026-07-20')
+  })
+
+  it('tidak menunggak sebelum tagihannya dicatat', () => {
+    expect(overdueOccurrence('2026-08-21', schedule({ dueDay: 20 }), '2026-08-21')).toBeNull()
+  })
+
+  it('siklus harian tidak pernah menumpuk tunggakan', () => {
+    expect(overdueOccurrence('2026-08-21', schedule({ recurrence: 'daily' }))).toBeNull()
+  })
+
+  it('mingguan mundur ke hari yang sama pekan lalu', () => {
+    // 2026-08-20 Kamis; jatuh tempo Senin berarti Senin 17 Agustus.
+    expect(overdueOccurrence('2026-08-20', schedule({ recurrence: 'weekly', dueDay: 1 }))).toBe(
+      '2026-08-17',
+    )
+  })
+
+  it('tahunan mundur ke tahun sebelumnya bila belum lewat', () => {
+    expect(
+      overdueOccurrence('2026-08-21', schedule({ recurrence: 'yearly', dueDay: 10, dueMonth: 12 })),
+    ).toBe('2025-12-10')
+  })
+
+  it('menyeberang tahun untuk siklus bulanan', () => {
+    expect(overdueOccurrence('2026-01-05', schedule({ dueDay: 20 }))).toBe('2025-12-20')
+  })
+
+  it('tanggal 31 mundur ke hari terakhir bulan pendek', () => {
+    expect(overdueOccurrence('2026-03-01', schedule({ dueDay: 31 }))).toBe('2026-02-28')
+  })
+
+  it('tunggakan ikut disisihkan walau di luar horizon ke depan', () => {
+    // Horizon 15 hari tidak memuat 20 September, tapi 20 Agustus tetap utang.
+    const dues = occurrencesWithin('2026-08-21', schedule({ dueDay: 20 }), 15)
+    expect(dues).toEqual(['2026-08-20'])
+  })
+
+  it('tunggakan dan jatuh tempo berikutnya punya kunci periode berbeda', () => {
+    const overdue = overdueOccurrence('2026-08-21', schedule({ dueDay: 20 }))!
+    expect(periodKeyFor('monthly', overdue)).toBe('2026-08')
+    expect(periodKeyFor('monthly', nextDue('2026-08-21', schedule({ dueDay: 20 })))).toBe('2026-09')
+  })
+
+  it('tagihan yang baru dicatat tidak menambah kejadian di horizon', () => {
+    const dues = occurrencesWithin('2026-08-21', schedule({ dueDay: 20 }), 15, '2026-08-21')
+    expect(dues).toEqual([])
   })
 })
