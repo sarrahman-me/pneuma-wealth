@@ -34,6 +34,10 @@ export const updateSettings = async (formData: FormData): Promise<ActionResult> 
 
     if (bufferDays < 1) throw new Error('Dana cadangan minimal untuk 1 hari.')
     if (allowanceHorizonDays < 1) throw new Error('Uang harus dibagi untuk minimal 1 hari.')
+    // 0% berarti dana cadangan tidak pernah terisi sama sekali.
+    if (bufferFillPercent < 1) {
+      throw new Error('Porsi untuk dana cadangan minimal 1%, supaya cadangannya bisa terisi.')
+    }
     // 100% berarti jatah harian nol lagi — persis kebuntuan yang mau dihindari.
     if (bufferFillPercent > 90) {
       throw new Error(

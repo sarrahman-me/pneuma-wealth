@@ -60,13 +60,41 @@ describe('computeFunds', () => {
 
   it('menyisakan dana fleksibel setelah penyangga penuh', () => {
     const funds = computeFunds({
-      liquidBalance: 5_000_000,
+      liquidBalance: 10_000_000,
       scheduledObligations: 0,
       settings: settings(),
     })
     expect(funds.bufferFilled).toBe(true)
-    expect(funds.flexible).toBe(2_000_000)
+    // Penahanan berhenti di target, tidak ikut naik terus.
+    expect(funds.reserved).toBe(3_000_000)
+    expect(funds.flexible).toBe(7_000_000)
     expect(funds.mode).toBe('calm')
+  })
+
+  it('tidak pernah menjatuhkan dana fleksibel saat uang bertambah', () => {
+    // Dulu ada jurang tepat di target penyangga: satu rupiah tambahan membuat
+    // seluruh target langsung ditahan dan jatah harian anjlok ke nol.
+    const config = settings({ dailyLivingCost: 100_000, bufferDays: 10, bufferFillPercent: 20 })
+    let previous = -1
+    for (let liquidBalance = 0; liquidBalance <= 6_000_000; liquidBalance += 1_000) {
+      const funds = computeFunds({ liquidBalance, scheduledObligations: 0, settings: config })
+      expect(funds.flexible).toBeGreaterThanOrEqual(previous)
+      expect(funds.reserved).toBeLessThanOrEqual(funds.bufferTarget)
+      previous = funds.flexible
+    }
+  })
+
+  it('menahan sesuai porsi meski uang tersedia sudah melewati target', () => {
+    const funds = computeFunds({
+      liquidBalance: 1_650_500,
+      scheduledObligations: 490_000,
+      settings: settings({ dailyLivingCost: 100_000, bufferDays: 10, bufferFillPercent: 20 }),
+    })
+    expect(funds.available).toBe(1_160_500)
+    expect(funds.bufferTarget).toBe(1_000_000)
+    expect(funds.reserved).toBe(232_100)
+    expect(funds.flexible).toBe(928_400)
+    expect(funds.bufferFilled).toBe(false)
   })
 
   it('runway memperhitungkan kewajiban yang belum dibayar', () => {
@@ -85,13 +113,13 @@ describe('computeFunds', () => {
       scheduledObligations: 0,
       settings: settings(),
     })
-    expect(funds.bufferRatio).toBeCloseTo(1 / 3)
+    expect(funds.bufferRatio).toBeCloseTo(0.55 / 3)
     expect(funds.mode).toBe('tight')
   })
 
   it('mode watchful ketika penyangga terisi sebagian besar', () => {
     const funds = computeFunds({
-      liquidBalance: 2_500_000,
+      liquidBalance: 3_000_000,
       scheduledObligations: 0,
       settings: settings(),
     })

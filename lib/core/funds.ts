@@ -8,12 +8,15 @@
  *    dibelanjakan, jadi jatah harian tidak pernah terlalu optimis dan tidak
  *    jatuh mendadak di hari pembayaran.
  *
- * 2. Penyangga diisi **bertahap**, bukan sebagai gerbang. Versi sebelumnya
- *    menetapkan `flexible = available - bufferTarget`, sehingga selama
- *    penyangga belum penuh dana fleksibel nol dan jatah harian Rp 0. Untuk
- *    pemasukan tak menentu itu bisa berbulan-bulan — aturan yang mustahil
- *    dipatuhi akan ditinggalkan. Sekarang sebagian uang mengisi penyangga dan
- *    sisanya tetap boleh dipakai, jadi selalu ada angka yang hidup.
+ * 2. Penyangga diisi **bertahap**, bukan sebagai gerbang, dan aturan bertahap
+ *    itu berlaku sampai penyangga benar-benar penuh. Versi sebelumnya
+ *    menetapkan `flexible = available - bufferTarget` begitu uang tersedia
+ *    melewati target, sehingga ada jurang di perbatasan: dengan target Rp 1 jt,
+ *    uang tersedia Rp 999.999 menyisakan Rp 799.999 yang boleh dibelanjakan,
+ *    tapi Rp 1.000.000 menyisakan Rp 0. Bertambah satu rupiah membuat jatah
+ *    harian anjlok — uang naik tapi terasa makin miskin. Sekarang porsi yang
+ *    ditahan tumbuh mulus mengikuti `bufferFillPercent` dan berhenti di target,
+ *    jadi lebih banyak uang tidak pernah berarti lebih sedikit jatah.
  */
 
 import { clamp } from './money'
@@ -38,25 +41,24 @@ export const computeFunds = ({
   const positive = Math.max(0, available)
 
   const bufferTarget = Math.max(0, settings.dailyLivingCost * settings.bufferDays)
-  const bufferFilled = bufferTarget > 0 && available >= bufferTarget
 
-  // Selama penyangga belum penuh, uang dibagi dua: sebagian mengisi penyangga,
-  // sisanya boleh dibelanjakan. Tanpa target penyangga (biaya hidup belum
-  // diisi) semua uang dianggap fleksibel.
+  // Sekian persen dari uang tersedia ditahan sebagai penyangga, sisanya boleh
+  // dibelanjakan — sampai penahanan itu menyentuh target dan berhenti di sana.
+  // Tanpa target penyangga (biaya hidup belum diisi) semua uang fleksibel.
   const fillPercent = clamp(Math.trunc(settings.bufferFillPercent), 0, 100)
-  const flexible = bufferFilled
-    ? available - bufferTarget
-    : bufferTarget > 0
-      ? Math.floor((positive * (100 - fillPercent)) / 100)
-      : positive
+  const reserved =
+    bufferTarget > 0
+      ? Math.min(bufferTarget, Math.floor((positive * fillPercent) / 100))
+      : 0
+  const flexible = positive - reserved
 
-  // `bufferBalance` mengukur rasa aman: seluruh uang yang belum dibelanjakan
-  // memang ada di sana. `reserved` mengukur hal lain — bagian yang belum boleh
-  // disentuh. Keduanya sengaja dipisah supaya persentase penyangga tidak ikut
-  // turun hanya karena sebagian uang boleh dibelanjakan.
-  const bufferBalance = clamp(available, 0, bufferTarget)
-  const bufferRatio = bufferTarget > 0 ? clamp(available / bufferTarget, 0, 1) : null
-  const reserved = positive - flexible
+  // `bufferBalance` adalah uang yang benar-benar sedang ditahan sebagai
+  // penyangga — angka yang sama dengan yang tampil di batang dana. Rasa aman
+  // diukur dari sini, bukan dari seluruh uang tersedia, supaya "penuh" berarti
+  // penyangganya memang sudah terkumpul.
+  const bufferBalance = reserved
+  const bufferFilled = bufferTarget > 0 && reserved >= bufferTarget
+  const bufferRatio = bufferTarget > 0 ? clamp(reserved / bufferTarget, 0, 1) : null
 
   // Runway dihitung dari `available`, jadi angkanya sudah memperhitungkan
   // kewajiban yang belum dibayar. Ini "aman N hari setelah semua tagihan lunas".

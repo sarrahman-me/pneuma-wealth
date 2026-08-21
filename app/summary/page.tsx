@@ -71,7 +71,7 @@ export default async function SummaryPage() {
           ) : null}
           <p className="metric-desc">
             {bufferPercent !== null
-              ? `Terisi ${bufferPercent}% dari target ${formatRupiah(funds.bufferTarget)}. Sisanya diisi ${user.settings.bufferFillPercent}% dari setiap uang yang masuk.`
+              ? `Terisi ${bufferPercent}% dari target ${formatRupiah(funds.bufferTarget)}. Diisi ${user.settings.bufferFillPercent}% dari uangmu, sisanya tetap boleh dibelanjakan.`
               : 'Isi biaya hidup harian dulu di Aturan.'}
           </p>
         </article>

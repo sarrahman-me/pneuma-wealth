@@ -61,14 +61,14 @@ export default function SettingsForm({
               name="buffer_fill_percent"
               inputMode="numeric"
               type="number"
-              min={0}
+              min={1}
               max={90}
               defaultValue={settings.bufferFillPercent}
               required
             />
             <span className="helper-text">
-              Selama dana cadangan belum penuh, sekian persen uang masuk dipakai untuk
-              mengisinya dan sisanya tetap jadi jatah harian. Makin besar, makin cepat aman
+              Sekian persen dari uangmu ditahan sebagai dana cadangan dan sisanya tetap
+              jadi jatah harian, sampai cadangannya penuh. Makin besar, makin cepat aman
               tapi makin ketat sehari-hari.
             </span>
           </label>

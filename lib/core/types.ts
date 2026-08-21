@@ -17,13 +17,17 @@ export type Settings = {
   /** Berapa hari hidup yang ingin dijamin oleh dana penyangga. */
   bufferDays: number
   /**
-   * Porsi uang tersedia yang diarahkan ke penyangga selama penyangga belum
-   * penuh, dalam persen (0–100). Sisanya tetap boleh dibelanjakan.
+   * Porsi uang tersedia yang ditahan sebagai penyangga, dalam persen (1–90).
+   * Sisanya tetap boleh dibelanjakan.
    *
    * Ini yang membuat penyangga terisi bertahap alih-alih jadi gerbang: dengan
    * pemasukan tak menentu, menunggu penyangga penuh sebelum boleh belanja
    * berarti jatah harian Rp 0 selama berbulan-bulan, dan aturan yang mustahil
    * dipatuhi akan ditinggalkan.
+   *
+   * Konsekuensinya penyangga baru penuh saat uang tersedia mencapai
+   * `bufferTarget × 100 / persen` — makin besar persennya, makin cepat penuh
+   * dan makin ketat hari-harinya.
    */
   bufferFillPercent: number
   /** Horizon pembagian dana fleksibel jadi jatah harian. */
@@ -64,8 +68,9 @@ export type Funds = {
   available: number
   bufferTarget: number
   /**
-   * Kemajuan menuju penyangga penuh: seluruh uang tersedia yang belum
-   * dibelanjakan, dibatasi target. Ini yang menentukan rasa aman.
+   * Uang yang sedang ditahan sebagai penyangga, dibatasi target. Sama dengan
+   * `reserved`; dinamai terpisah karena inilah yang dibaca sebagai "dana
+   * cadangan" di layar dan yang menentukan rasa aman.
    */
   bufferBalance: number
   /**
