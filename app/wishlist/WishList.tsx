@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { addWish, buyWish, deleteWish, releaseWish, updateWish } from '@/app/actions/wishes'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import MoneyInput from '@/app/components/MoneyInput'
 import type { ActionResult } from '@/app/actions/transactions'
 import { formatMultiplier, formatRupiah, formatShortDate } from '@/lib/core/format'
@@ -194,6 +195,7 @@ function WaitingRow({ wish }: { wish: WishView }) {
 
 function DecidedRow({ wish }: { wish: WishView }) {
   const [state, action, pending] = useAction(deleteWish)
+  const formRef = useRef<HTMLFormElement>(null)
 
   return (
     <li className="wish-row wish-decided">
@@ -206,12 +208,20 @@ function DecidedRow({ wish }: { wish: WishView }) {
         {state && !state.ok ? <p className="alert-error">{state.error}</p> : null}
       </div>
       <span className="wish-amount">{formatRupiah(wish.amount)}</span>
-      <form action={action}>
+      <form ref={formRef} action={action}>
         <input type="hidden" name="id" value={wish.id} />
-        <button type="submit" className="link-button" disabled={pending}>
-          {pending ? '…' : 'Hapus'}
-        </button>
       </form>
+      <ConfirmDialog
+        trigger={(open) => (
+          <button type="button" className="link-button" onClick={open} disabled={pending}>
+            {pending ? '…' : 'Hapus'}
+          </button>
+        )}
+        title="Hapus catatan keinginan ini?"
+        description="Catatan yang sudah dihapus tidak bisa dikembalikan."
+        onConfirm={() => formRef.current?.requestSubmit()}
+        pending={pending}
+      />
     </li>
   )
 }

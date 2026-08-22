@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import {
   addFixedCost,
   deleteFixedCost,
@@ -9,6 +9,7 @@ import {
   updateFixedCost,
 } from '@/app/actions/fixed-costs'
 import type { ActionResult } from '@/app/actions/transactions'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import MoneyInput from '@/app/components/MoneyInput'
 import { formatRupiah } from '@/lib/core/format'
 
@@ -134,6 +135,7 @@ function DailyNote() {
 function Row({ cost }: { cost: FixedCostView }) {
   const [editing, setEditing] = useState(false)
   const [recurrence, setRecurrence] = useState<string>(cost.recurrence)
+  const deleteFormRef = useRef<HTMLFormElement>(null)
 
   const [paidState, paidAction, paidPending] = useAction(
     cost.paid ? markFixedCostUnpaid : markFixedCostPaid,
@@ -253,12 +255,20 @@ function Row({ cost }: { cost: FixedCostView }) {
           Ubah
         </button>
 
-        <form action={deleteAction}>
+        <form ref={deleteFormRef} action={deleteAction}>
           <input type="hidden" name="id" value={cost.id} />
-          <button type="submit" className="link-button" disabled={deletePending}>
-            {deletePending ? '…' : 'Hapus'}
-          </button>
         </form>
+        <ConfirmDialog
+          trigger={(open) => (
+            <button type="button" className="link-button" onClick={open} disabled={deletePending}>
+              {deletePending ? '…' : 'Hapus'}
+            </button>
+          )}
+          title="Hapus tagihan rutin ini?"
+          description="Riwayat pembayaran yang sudah tercatat untuk tagihan ini ikut terhapus."
+          onConfirm={() => deleteFormRef.current?.requestSubmit()}
+          pending={deletePending}
+        />
       </div>
     </li>
   )

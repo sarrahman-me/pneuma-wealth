@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import {
   deleteTransaction,
   updateTransaction,
   type ActionResult,
 } from '@/app/actions/transactions'
+import ConfirmDialog from './ConfirmDialog'
 import MoneyInput from './MoneyInput'
 import { formatRupiah, formatShortDate } from '@/lib/core/format'
 
@@ -32,6 +33,7 @@ export default function TransactionRow({
   showDate?: boolean
 }) {
   const [editing, setEditing] = useState(false)
+  const deleteFormRef = useRef<HTMLFormElement>(null)
 
   const [deleteState, deleteAction, deletePending] = useActionState(
     async (_prev: ActionResult | null, formData: FormData) => deleteTransaction(formData),
@@ -144,12 +146,20 @@ export default function TransactionRow({
           </button>
         ) : null}
 
-        <form action={deleteAction}>
+        <form ref={deleteFormRef} action={deleteAction}>
           <input type="hidden" name="id" value={transaction.id} />
-          <button type="submit" className="link-button" disabled={deletePending}>
-            {deletePending ? '…' : 'Hapus'}
-          </button>
         </form>
+        <ConfirmDialog
+          trigger={(open) => (
+            <button type="button" className="link-button" onClick={open} disabled={deletePending}>
+              {deletePending ? '…' : 'Hapus'}
+            </button>
+          )}
+          title="Hapus transaksi ini?"
+          description="Transaksi yang sudah dihapus tidak bisa dikembalikan."
+          onConfirm={() => deleteFormRef.current?.requestSubmit()}
+          pending={deletePending}
+        />
       </div>
     </li>
   )
